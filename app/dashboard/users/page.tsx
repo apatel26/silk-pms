@@ -43,7 +43,8 @@ export default function UsersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Submitting with editingUser:', editingUser?.id);
+    alert('Form submitted! editingUser: ' + editingUser?.id);
+    console.log('Submit started');
     try {
       if (editingUser) {
         // Update existing user
