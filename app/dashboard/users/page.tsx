@@ -43,7 +43,6 @@ export default function UsersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('handleSubmit running! editingUser: ' + editingUser?.id);
     try {
       if (editingUser) {
         // Update existing user
@@ -55,14 +54,24 @@ export default function UsersPage() {
         if (formData.password) {
           updateData.password = formData.password;
         }
+        alert('Sending update to server...');
         const res = await fetch(`/api/users?id=${editingUser.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updateData),
         });
+        alert('Response status: ' + res.status);
         const result = await res.json();
+        alert('Result: ' + JSON.stringify(result));
         if (!res.ok) {
           alert('Error: ' + (result.error || 'Failed to update'));
+          return;
+        }
+        // Log out if username or password changed
+        if (formData.password || formData.username !== editingUser.username) {
+          alert('You will be logged out due to credential change');
+          await fetch('/api/auth', { method: 'DELETE' });
+          window.location.href = '/';
           return;
         }
       } else {
@@ -84,6 +93,7 @@ export default function UsersPage() {
       fetchUsers();
     } catch (error) {
       console.error('Error saving user:', error);
+      alert('Error: ' + error);
     }
   };
 
@@ -263,7 +273,7 @@ export default function UsersPage() {
             <h3 className="text-xl font-bold text-slate-800 mb-6">
               {editingUser ? 'Edit User' : 'Add User'}
             </h3>
-            <form onSubmit={(e) => { e.preventDefault(); alert('Form submit fired!'); handleSubmit(e); }} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Username *
