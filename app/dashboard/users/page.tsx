@@ -56,6 +56,25 @@ export default function UsersPage() {
         if (formData.password) {
           updateData.password = formData.password;
         }
+        alert('About to fetch PUT to: /api/users?id=' + editingUser.id);
+        console.log('Update data:', updateData);
+        const res = await fetch(`/api/users?id=${editingUser.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData),
+        });
+        alert('Got response, status: ' + res.status);
+    try {
+      if (editingUser) {
+        // Update existing user
+        const updateData: any = {
+          username: formData.username,
+          full_name: formData.full_name || null,
+          role: formData.role,
+        };
+        if (formData.password) {
+          updateData.password = formData.password;
+        }
         console.log('Update data:', updateData);
         const res = await fetch(`/api/users?id=${editingUser.id}`, {
           method: 'PUT',
