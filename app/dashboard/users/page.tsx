@@ -326,6 +326,7 @@ export default function UsersPage() {
                 </button>
                 <button
                   type="submit"
+                  onClick={() => alert('Button clicked!')}
                   className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
                 >
                   {editingUser ? 'Update' : 'Add'}
