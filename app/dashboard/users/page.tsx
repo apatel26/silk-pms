@@ -262,7 +262,7 @@ export default function UsersPage() {
             <h3 className="text-xl font-bold text-slate-800 mb-6">
               {editingUser ? 'Edit User' : 'Add User'}
             </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); alert('Form submitted!'); handleSubmit(e); }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Username *
