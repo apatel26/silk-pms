@@ -43,6 +43,7 @@ export default function UsersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Submitting with editingUser:', editingUser?.id);
     try {
       if (editingUser) {
         // Update existing user
@@ -54,27 +55,37 @@ export default function UsersPage() {
         if (formData.password) {
           updateData.password = formData.password;
         }
+        console.log('Update data:', updateData);
         const res = await fetch(`/api/users?id=${editingUser.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updateData),
         });
+        console.log('Response status:', res.status);
+        const result = await res.json();
+        console.log('Response:', result);
         if (!res.ok) {
-          const err = await res.json();
-          alert('Error: ' + (err.error || 'Failed to update'));
+          alert('Error: ' + (result.error || 'Failed to update'));
           return;
+        } else {
+          alert('User updated successfully!');
         }
       } else {
         // Create new user
+        console.log('Creating new user with:', formData);
         const res = await fetch('/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         });
+        console.log('Response status:', res.status);
+        const result = await res.json();
+        console.log('Response:', result);
         if (!res.ok) {
-          const err = await res.json();
-          alert('Error: ' + (err.error || 'Failed to create'));
+          alert('Error: ' + (result.error || 'Failed to create'));
           return;
+        } else {
+          alert('User created successfully!');
         }
       }
       setShowModal(false);
