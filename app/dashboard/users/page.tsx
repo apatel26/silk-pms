@@ -45,7 +45,6 @@ export default function UsersPage() {
     e.preventDefault();
     try {
       if (editingUser) {
-        // Update existing user
         const updateData: any = {
           username: formData.username,
           full_name: formData.full_name || null,
@@ -54,28 +53,23 @@ export default function UsersPage() {
         if (formData.password) {
           updateData.password = formData.password;
         }
-        alert('Sending update to server...');
         const res = await fetch(`/api/users/${editingUser.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updateData),
         });
-        alert('Response status: ' + res.status);
         const result = await res.json();
-        alert('Result: ' + JSON.stringify(result));
         if (!res.ok) {
           alert('Error: ' + (result.error || 'Failed to update'));
           return;
         }
         // Log out if username or password changed
         if (formData.password || formData.username !== editingUser.username) {
-          alert('You will be logged out due to credential change');
           await fetch('/api/auth', { method: 'DELETE' });
           window.location.href = '/';
           return;
         }
       } else {
-        // Create new user
         const res = await fetch('/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -93,7 +87,6 @@ export default function UsersPage() {
       fetchUsers();
     } catch (error) {
       console.error('Error saving user:', error);
-      alert('Error: ' + error);
     }
   };
 
