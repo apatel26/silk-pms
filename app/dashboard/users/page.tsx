@@ -262,7 +262,7 @@ export default function UsersPage() {
             <h3 className="text-xl font-bold text-slate-800 mb-6">
               {editingUser ? 'Edit User' : 'Add User'}
             </h3>
-            <form onSubmit={(e) => { e.preventDefault(); alert('Form submitted!'); handleSubmit(e); }} className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); alert('Form submit fired!'); handleSubmit(e); }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Username *
@@ -326,7 +326,6 @@ export default function UsersPage() {
                 </button>
                 <button
                   type="submit"
-                  onClick={() => alert('Button clicked!')}
                   className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
                 >
                   {editingUser ? 'Update' : 'Add'}
