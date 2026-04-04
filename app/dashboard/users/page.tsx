@@ -43,8 +43,6 @@ export default function UsersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Form submitted! editingUser: ' + editingUser?.id);
-    console.log('Submit started');
     try {
       if (editingUser) {
         // Update existing user
@@ -56,56 +54,27 @@ export default function UsersPage() {
         if (formData.password) {
           updateData.password = formData.password;
         }
-        alert('About to fetch PUT to: /api/users?id=' + editingUser.id);
-        console.log('Update data:', updateData);
         const res = await fetch(`/api/users?id=${editingUser.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updateData),
         });
-        alert('Got response, status: ' + res.status);
-    try {
-      if (editingUser) {
-        // Update existing user
-        const updateData: any = {
-          username: formData.username,
-          full_name: formData.full_name || null,
-          role: formData.role,
-        };
-        if (formData.password) {
-          updateData.password = formData.password;
-        }
-        console.log('Update data:', updateData);
-        const res = await fetch(`/api/users?id=${editingUser.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updateData),
-        });
-        console.log('Response status:', res.status);
         const result = await res.json();
-        console.log('Response:', result);
         if (!res.ok) {
           alert('Error: ' + (result.error || 'Failed to update'));
           return;
-        } else {
-          alert('User updated successfully!');
         }
       } else {
         // Create new user
-        console.log('Creating new user with:', formData);
         const res = await fetch('/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         });
-        console.log('Response status:', res.status);
         const result = await res.json();
-        console.log('Response:', result);
         if (!res.ok) {
           alert('Error: ' + (result.error || 'Failed to create'));
           return;
-        } else {
-          alert('User created successfully!');
         }
       }
       setShowModal(false);
