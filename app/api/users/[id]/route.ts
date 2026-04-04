@@ -19,9 +19,12 @@ async function getCurrentUser() {
   return decodeSession(sessionCookie.value);
 }
 
-// PUT /api/users?id=xxx - Update user (admin only)
-export async function PUT(request: Request) {
+type RouteParams = { params: Promise<{ id: string }> };
+
+// PUT /api/users/[id] - Update user (admin only)
+export async function PUT(request: Request, { params }: RouteParams) {
   try {
+    const { id } = await params;
     const currentUser = await getCurrentUser();
 
     if (!currentUser) {
@@ -32,20 +35,12 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
-    }
-
     const body = await request.json();
     const supabase = createServerClient();
 
     const updateData: any = {};
-
     if (body.username) updateData.username = body.username;
-    if (body.password) updateData.password_hash = body.password; // In production, hash this!
+    if (body.password) updateData.password_hash = body.password;
     if (body.full_name !== undefined) updateData.full_name = body.full_name;
     if (body.role) {
       if (!['admin', 'manager', 'staff'].includes(body.role)) {
@@ -71,9 +66,10 @@ export async function PUT(request: Request) {
   }
 }
 
-// DELETE /api/users?id=xxx - Delete user (admin only)
-export async function DELETE(request: Request) {
+// DELETE /api/users/[id] - Delete user (admin only)
+export async function DELETE(request: Request, { params }: RouteParams) {
   try {
+    const { id } = await params;
     const currentUser = await getCurrentUser();
 
     if (!currentUser) {
@@ -84,20 +80,11 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
-    }
-
-    // Prevent deleting yourself
     if (id === currentUser.userId) {
       return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 400 });
     }
 
     const supabase = createServerClient();
-
     const { error } = await supabase
       .from('users')
       .delete()

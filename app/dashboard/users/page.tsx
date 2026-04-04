@@ -55,7 +55,7 @@ export default function UsersPage() {
           updateData.password = formData.password;
         }
         alert('Sending update to server...');
-        const res = await fetch(`/api/users?id=${editingUser.id}`, {
+        const res = await fetch(`/api/users/${editingUser.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updateData),
@@ -111,7 +111,7 @@ export default function UsersPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this user?')) return;
     try {
-      await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
+      await fetch(`/api/users/${id}`, { method: 'DELETE' });
       fetchUsers();
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -120,7 +120,7 @@ export default function UsersPage() {
 
   const handleToggleActive = async (user: User) => {
     try {
-      await fetch(`/api/users?id=${user.id}`, {
+      await fetch(`/api/users/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active: !user.active }),
