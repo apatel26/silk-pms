@@ -54,18 +54,28 @@ export default function UsersPage() {
         if (formData.password) {
           updateData.password = formData.password;
         }
-        await fetch(`/api/users?id=${editingUser.id}`, {
+        const res = await fetch(`/api/users?id=${editingUser.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updateData),
         });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Error: ' + (err.error || 'Failed to update'));
+          return;
+        }
       } else {
         // Create new user
-        await fetch('/api/users', {
+        const res = await fetch('/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Error: ' + (err.error || 'Failed to create'));
+          return;
+        }
       }
       setShowModal(false);
       setEditingUser(null);
