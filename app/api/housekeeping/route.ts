@@ -140,7 +140,10 @@ export async function PUT(request: Request) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Housekeeping update error:', error);
+      return NextResponse.json({ error: 'Update failed: ' + error.message }, { status: 500 });
+    }
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error updating housekeeping task:', error);

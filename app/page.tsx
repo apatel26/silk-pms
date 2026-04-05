@@ -68,7 +68,7 @@ export default function LoginPage() {
 
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12">
           {/* Logo */}
-          <div className="w-32 h-32 rounded-2xl flex items-center justify-center mb-8 shadow-2xl shadow-amber-500/20 overflow-hidden bg-gradient-to-br from-amber-400 to-amber-600">
+          <div className={`w-32 h-32 rounded-2xl flex items-center justify-center mb-8 shadow-2xl shadow-amber-500/20 overflow-hidden ${logoUrl ? '' : 'bg-gradient-to-br from-amber-400 to-amber-600'}`}>
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
             ) : (

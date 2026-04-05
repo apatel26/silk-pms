@@ -114,10 +114,11 @@ export default function HousekeepingPage() {
   // Generate tasks for rooms that need cleaning
   const handleGenerateFromEntries = async () => {
     const rooms = getRoomsNeedingCleaning();
+    let created = 0;
     for (const roomNum of rooms) {
       const existingTask = getTaskForRoom(roomNum);
       if (!existingTask) {
-        await fetch('/api/housekeeping', {
+        const res = await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -127,17 +128,20 @@ export default function HousekeepingPage() {
             status: 'pending',
           }),
         });
+        if (res.ok) created++;
       }
     }
     fetchData();
+    alert('Auto: Created ' + created + ' tasks for rooms with checkouts today');
   };
 
   // Pending All
   const handlePendingAll = async () => {
+    let created = 0;
     for (const roomNum of GUEST_ROOMS) {
       const existingTask = getTaskForRoom(roomNum);
       if (!existingTask) {
-        await fetch('/api/housekeeping', {
+        const res = await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -147,17 +151,20 @@ export default function HousekeepingPage() {
             status: 'pending',
           }),
         });
+        if (res.ok) created++;
       }
     }
     fetchData();
+    alert('Pending All: Created ' + created + ' pending tasks');
   };
 
   // Skip All
   const handleSkipAll = async () => {
+    let created = 0;
     for (const roomNum of GUEST_ROOMS) {
       const existingTask = getTaskForRoom(roomNum);
       if (!existingTask) {
-        await fetch('/api/housekeeping', {
+        const res = await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -167,17 +174,20 @@ export default function HousekeepingPage() {
             status: 'skip',
           }),
         });
+        if (res.ok) created++;
       }
     }
     fetchData();
+    alert('Skip All: Created ' + created + ' skip tasks');
   };
 
   // Clean All
   const handleCleanAll = async () => {
+    let created = 0;
     for (const roomNum of GUEST_ROOMS) {
       const existingTask = getTaskForRoom(roomNum);
       if (!existingTask) {
-        await fetch('/api/housekeeping', {
+        const res = await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -187,9 +197,11 @@ export default function HousekeepingPage() {
             status: 'cleaned',
           }),
         });
+        if (res.ok) created++;
       }
     }
     fetchData();
+    alert('Clean All: Created ' + created + ' cleaned tasks');
   };
 
   const handlePrint = () => {

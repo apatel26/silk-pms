@@ -108,7 +108,7 @@ export default function SettingsPage() {
       });
 
       if (res.ok) {
-        alert('Settings saved! City tax: ' + cityTax + '%, State tax: ' + stateTax + '%');
+        alert('Settings saved successfully!');
         fetchSettings();
       } else {
         const err = await res.text();
