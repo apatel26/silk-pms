@@ -173,14 +173,14 @@ CREATE TABLE backup_records (
 );
 
 -- Indexes
-CREATE INDEX idx_entries_date ON entries(date);
-CREATE INDEX idx_entries_type ON entries(entry_type);
-CREATE INDEX idx_entries_room ON entries(room_number);
-CREATE INDEX idx_entries_site ON entries(site_number);
-CREATE INDEX idx_entries_customer ON entries(customer_id);
-CREATE INDEX idx_housekeeping_date ON housekeeping_tasks(date);
-CREATE INDEX idx_audit_log_user ON audit_log(user_id);
-CREATE INDEX idx_audit_log_created ON audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date);
+CREATE INDEX IF NOT EXISTS idx_entries_type ON entries(entry_type);
+CREATE INDEX IF NOT EXISTS idx_entries_room ON entries(room_number);
+CREATE INDEX IF NOT EXISTS idx_entries_site ON entries(site_number);
+CREATE INDEX IF NOT EXISTS idx_entries_customer ON entries(customer_id);
+CREATE INDEX IF NOT EXISTS idx_housekeeping_date ON housekeeping_tasks(date);
+CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
 
 -- Disable RLS
 ALTER TABLE property_settings FORCE ROW LEVEL SECURITY;
