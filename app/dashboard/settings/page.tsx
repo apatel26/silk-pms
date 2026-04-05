@@ -100,12 +100,6 @@ export default function SettingsPage() {
         logo_url: logoUrl,
       };
 
-      console.log('=== SETTINGS SAVE ===');
-      console.log('Input city_tax_rate:', settings.city_tax_rate);
-      console.log('Rounded city_tax:', cityTax);
-      console.log('Saving as decimal:', cityTax / 100);
-      console.log('Full payload:', JSON.stringify(payload, null, 2));
-
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -113,18 +107,14 @@ export default function SettingsPage() {
         body: JSON.stringify(payload),
       });
 
-      const responseText = await res.text();
-      console.log('Response status:', res.status);
-      console.log('Response:', responseText);
-
       if (res.ok) {
-        alert('Settings saved successfully!');
+        alert('Settings saved! City tax: ' + cityTax + '%, State tax: ' + stateTax + '%');
         fetchSettings();
       } else {
-        alert('Error: ' + responseText);
+        const err = await res.text();
+        alert('Error saving: ' + err);
       }
     } catch (error) {
-      console.error('Error saving settings:', error);
       alert('Error: ' + String(error));
     } finally {
       setSaving(false);
