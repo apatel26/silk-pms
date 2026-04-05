@@ -20,12 +20,13 @@ interface Entry {
   check_in: string | null;
   check_out: string | null;
   room_rate: number;
+  num_nights: number;
+  subtotal: number;
   tax_c: number;
   tax_s: number;
   pet_fee: number;
   pet_count: number;
   extra_charges: any[];
-  subtotal: number;
   total: number;
   cash: number | null;
   cc: number | null;
@@ -33,6 +34,8 @@ interface Entry {
   is_refund: boolean;
   refund_amount: number;
   status: string;
+  group_id: string | null;
+  is_group_main: boolean;
 }
 
 export default function ReportsPage() {

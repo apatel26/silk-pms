@@ -17,12 +17,13 @@ interface Entry {
   check_in: string | null;
   check_out: string | null;
   room_rate: number;
+  num_nights: number;
+  subtotal: number;
   tax_c: number;
   tax_s: number;
   pet_fee: number;
   pet_count: number;
   extra_charges: any[];
-  subtotal: number;
   total: number;
   cash: number | null;
   cc: number | null;
@@ -30,6 +31,8 @@ interface Entry {
   is_refund: boolean;
   refund_amount: number;
   status: string;
+  group_id: string | null;
+  is_group_main: boolean;
 }
 
 interface FormData {
@@ -51,6 +54,8 @@ interface FormData {
   note: string;
   is_refund: boolean;
   refund_amount: number;
+  is_group: boolean;
+  group_rooms: string[];
 }
 
 const DEFAULT_PET_FEE = 20;
@@ -82,6 +87,8 @@ export default function EntriesPage() {
     note: '',
     is_refund: false,
     refund_amount: 0,
+    is_group: false,
+    group_rooms: [],
   });
 
   useEffect(() => {
@@ -132,14 +139,23 @@ export default function EntriesPage() {
 
   const calculateTotal = () => {
     const rate = formData.rate_plan === 'custom' ? formData.custom_rate : 70;
-    const taxC = rate * 0.07;
-    const taxS = rate * 0.06;
-    const subtotal = rate + taxC + taxS;
+
+    // Calculate number of nights
+    const checkIn = dayjs(formData.check_in);
+    const checkOut = dayjs(formData.check_out);
+    const nights = checkOut.diff(checkIn, 'day');
+    const numNights = nights > 0 ? nights : 1;
+
+    // Calculate total for all nights
+    const subtotalForNights = rate * numNights;
+    const taxC = subtotalForNights * 0.07;
+    const taxS = subtotalForNights * 0.06;
+    const subtotal = subtotalForNights + taxC + taxS;
 
     const petFee = formData.pet_count > 0
       ? (formData.pet_fee_type === 'default'
-          ? DEFAULT_PET_FEE * formData.pet_count
-          : formData.custom_pet_fee * formData.pet_count)
+          ? DEFAULT_PET_FEE * formData.pet_count * numNights
+          : formData.custom_pet_fee * formData.pet_count * numNights)
       : 0;
 
     const extraCharges = formData.extra_charges.reduce((sum, ec) => sum + ec.amount, 0);
@@ -153,46 +169,71 @@ export default function EntriesPage() {
 
   const handleSubmit = async () => {
     const rate = formData.rate_plan === 'custom' ? formData.custom_rate : 70;
+
+    // Calculate number of nights
+    const checkIn = dayjs(formData.check_in);
+    const checkOut = dayjs(formData.check_out);
+    const nights = checkOut.diff(checkIn, 'day');
+    const numNights = nights > 0 ? nights : 1;
+
+    // Room rate is per night, but subtotal/total is for all nights
+    const subtotalForNights = rate * numNights;
     const petFee = formData.pet_count > 0
       ? (formData.pet_fee_type === 'default'
-          ? DEFAULT_PET_FEE * formData.pet_count
-          : formData.custom_pet_fee * formData.pet_count)
+          ? DEFAULT_PET_FEE * formData.pet_count * numNights
+          : formData.custom_pet_fee * formData.pet_count * numNights)
       : 0;
 
-    const payload = {
+    const createPayload = (roomNum: string, isMainRoom: boolean) => ({
       entry_type: formData.entry_type,
       date: formData.date,
-      room_number: formData.entry_type === 'guest' ? formData.room_number : null,
-      site_number: formData.entry_type === 'rv' ? formData.site_number : null,
+      room_number: formData.entry_type === 'guest' ? roomNum : null,
+      site_number: formData.entry_type === 'rv' ? roomNum : null,
       customer_name: formData.customer_name,
       rate_plan_id: null,
       check_in: formData.check_in || null,
       check_out: formData.check_out || null,
       room_rate: rate,
-      pet_fee: petFee,
-      pet_count: formData.pet_count,
-      extra_charges: formData.extra_charges,
-      cash: formData.cash || null,
-      cc: formData.cc || null,
+      num_nights: numNights,
+      subtotal: subtotalForNights,
+      pet_fee: isMainRoom ? petFee : 0, // Only charge pet fee on main room
+      pet_count: isMainRoom ? formData.pet_count : 0,
+      extra_charges: isMainRoom ? formData.extra_charges : [],
+      cash: isMainRoom ? (formData.cash || null) : null,
+      cc: isMainRoom ? (formData.cc || null) : null,
       note: formData.note || null,
       is_refund: formData.is_refund,
       refund_amount: formData.is_refund ? formData.refund_amount : 0,
       status: 'active',
-    };
+      group_id: formData.is_group && formData.group_rooms.length > 0 ? `group_${Date.now()}` : null,
+      is_group_main: isMainRoom ? true : false,
+    });
 
     try {
       if (editingEntry) {
         await fetch(`/api/entries/${editingEntry.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(createPayload(formData.room_number, true)),
         });
       } else {
+        // Create main room entry
         await fetch('/api/entries', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(createPayload(formData.room_number, true)),
         });
+
+        // Create group room entries
+        if (formData.is_group && formData.group_rooms.length > 0) {
+          for (const groupRoom of formData.group_rooms) {
+            await fetch('/api/entries', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(createPayload(groupRoom, false)),
+            });
+          }
+        }
       }
 
       resetForm();
@@ -223,6 +264,8 @@ export default function EntriesPage() {
       note: entry.note || '',
       is_refund: entry.is_refund,
       refund_amount: entry.refund_amount,
+      is_group: !!entry.group_id,
+      group_rooms: [],
     });
     setView(entry.entry_type === 'guest' ? 'guests' : 'rv');
     setShowModal(true);
@@ -250,6 +293,8 @@ export default function EntriesPage() {
       note: '',
       is_refund: false,
       refund_amount: 0,
+      is_group: false,
+      group_rooms: [],
     });
   };
 
@@ -486,6 +531,53 @@ export default function EntriesPage() {
                       <option key={s} value={s}>RV Site {s}</option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {/* Group Entry Toggle */}
+              {formData.entry_type === 'guest' && (
+                <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_group}
+                      onChange={(e) => setFormData({ ...formData, is_group: e.target.checked, group_rooms: [] })}
+                      className="w-5 h-5 rounded border-slate-600 bg-slate-700 text-amber-500 focus:ring-amber-500"
+                    />
+                    <div>
+                      <span className="text-white font-medium">Group Entry</span>
+                      <p className="text-xs text-slate-400">One guest booking multiple rooms</p>
+                    </div>
+                  </label>
+
+                  {formData.is_group && (
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-slate-300 mb-2">Additional Rooms</label>
+                      <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
+                        {GUEST_ROOMS.filter(r => r !== parseInt(formData.room_number)).map((r) => (
+                          <label key={r} className="flex items-center gap-2 p-2 rounded bg-slate-800 hover:bg-slate-700 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={formData.group_rooms.includes(String(r))}
+                              onChange={(e) => {
+                                const rooms = e.target.checked
+                                  ? [...formData.group_rooms, String(r)]
+                                  : formData.group_rooms.filter(gr => gr !== String(r));
+                                setFormData({ ...formData, group_rooms: rooms });
+                              }}
+                              className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-amber-500"
+                            />
+                            <span className="text-white text-sm">{r}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {formData.group_rooms.length > 0 && (
+                        <p className="mt-2 text-sm text-amber-400">
+                          + {formData.group_rooms.length} additional room(s)
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

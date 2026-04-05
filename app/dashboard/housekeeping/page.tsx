@@ -245,14 +245,27 @@ export default function HousekeepingPage() {
 
   const roomsNeedingCleaning = getRoomsNeedingCleaning();
 
+  // Count stats based on ALL rooms, not just tasks
+  const getRoomStatus = (roomNum: number): 'occupied' | 'cleaned' | 'pending' | 'skip' => {
+    const task = getTaskForRoom(roomNum);
+    const hasActiveGuest = entries.some(
+      e => e.room_number === String(roomNum) && e.status === 'active'
+    );
+    if (hasActiveGuest) return 'occupied';
+    if (!task) return 'pending';
+    return task.status;
+  };
+
   const stats = {
-    cleaned: tasks.filter(t => t.status === 'cleaned').length,
-    pending: tasks.filter(t => t.status === 'pending').length,
-    skipped: tasks.filter(t => t.status === 'skip').length,
+    occupied: entries.filter(e => e.status === 'active' && e.room_number).length,
+    cleaned: GUEST_ROOMS.filter(r => getRoomStatus(r) === 'cleaned').length,
+    pending: GUEST_ROOMS.filter(r => getRoomStatus(r) === 'pending').length,
+    skipped: GUEST_ROOMS.filter(r => getRoomStatus(r) === 'skip').length,
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'occupied': return 'bg-blue-500/20 border-blue-500';
       case 'cleaned': return 'bg-green-500/20 border-green-500';
       case 'skip': return 'bg-yellow-500/20 border-yellow-500';
       default: return 'bg-slate-700/50 border-slate-600';
@@ -261,6 +274,7 @@ export default function HousekeepingPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
+      case 'occupied': return '●';
       case 'cleaned': return '✓';
       case 'skip': return '—';
       default: return '○';
@@ -313,6 +327,7 @@ export default function HousekeepingPage() {
           </div>
 
           <div className="flex items-center gap-4 text-sm">
+            <span className="text-blue-400">● {stats.occupied}</span>
             <span className="text-green-400">✓ {stats.cleaned}</span>
             <span className="text-slate-400">○ {stats.pending}</span>
             <span className="text-yellow-400">— {stats.skipped}</span>
@@ -355,30 +370,28 @@ export default function HousekeepingPage() {
         ) : (
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
             {GUEST_ROOMS.map((roomNum) => {
-              const task = getTaskForRoom(roomNum);
-              const status = task?.status || 'pending';
-              const needsCleaning = roomsNeedingCleaning.includes(roomNum);
+              const status = getRoomStatus(roomNum);
+              const isOccupied = status === 'occupied';
 
               return (
                 <button
                   key={roomNum}
-                  onClick={() => handleRoomClick(roomNum)}
+                  onClick={() => !isOccupied && handleRoomClick(roomNum)}
+                  disabled={isOccupied}
                   className={`
-                    relative p-3 rounded-xl border-2 transition-all aspect-square flex flex-col items-center justify-center cursor-pointer
+                    relative p-3 rounded-xl border-2 transition-all aspect-square flex flex-col items-center justify-center
+                    ${isOccupied ? 'cursor-not-allowed opacity-75' : 'cursor-pointer'}
                     ${getStatusColor(status)}
                   `}
                 >
-                  <span className={`text-lg font-bold ${status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : 'text-white'}`}>
+                  <span className={`text-lg font-bold ${status === 'occupied' ? 'text-blue-400' : status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : 'text-white'}`}>
                     {roomNum}
                   </span>
-                  <span className={`text-xl ${status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : 'text-slate-500'}`}>
+                  <span className={`text-xl ${status === 'occupied' ? 'text-blue-400' : status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : 'text-slate-500'}`}>
                     {getStatusIcon(status)}
                   </span>
                   {roomNum >= 201 && (
                     <span className="absolute top-1 left-1 w-2 h-2 rounded-full bg-blue-500" />
-                  )}
-                  {needsCleaning && (
-                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" title="Guest checking out" />
                   )}
                 </button>
               );
@@ -397,8 +410,12 @@ export default function HousekeepingPage() {
 
       {/* Legend */}
       <div className="bg-slate-900 rounded-xl p-6 border border-slate-800 print:hidden">
-        <h3 className="text-sm font-semibold text-white mb-3">Click room to cycle: Pending → Cleaned → Skip → Pending</h3>
+        <h3 className="text-sm font-semibold text-white mb-3">Click room to cycle: Pending → Cleaned → Skip → Pending (Occupied rooms can't be changed)</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded bg-blue-500/20 border-2 border-blue-500/50 flex items-center justify-center text-blue-400 font-bold">●</span>
+            <span className="text-white">Occupied</span>
+          </div>
           <div className="flex items-center gap-2">
             <span className="w-8 h-8 rounded bg-green-500/20 border-2 border-green-500/50 flex items-center justify-center text-green-400 font-bold">✓</span>
             <span className="text-white">Cleaned</span>
@@ -412,7 +429,6 @@ export default function HousekeepingPage() {
             <span className="text-white">Pending</span>
           </div>
         </div>
-        <p className="text-xs text-slate-500 mt-3">Amber dot = Guest checking out today (needs cleaning)</p>
       </div>
 
       <style jsx global>{`
