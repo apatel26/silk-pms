@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 const AUTH_COOKIE_NAME = 'pms_session';
 
 function decodeSession(token: string): any {
