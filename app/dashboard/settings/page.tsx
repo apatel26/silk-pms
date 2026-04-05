@@ -89,17 +89,20 @@ export default function SettingsPage() {
         monthly_50amp: settings.monthly_50amp,
       };
 
+      console.log('Saving settings:', payload);
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
+
+      console.log('Response status:', res.status, res.statusText);
 
       if (res.ok) {
         alert('Settings saved successfully!');
       } else {
-        const text = await res.text();
-        alert('Error: ' + (text || 'Failed to save'));
+        alert('Error ' + res.status + ': ' + res.statusText);
       }
     } catch (error) {
       console.error('Error saving settings:', error);
