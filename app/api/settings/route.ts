@@ -57,8 +57,8 @@ export async function GET() {
   }
 }
 
-// PUT /api/settings - Update property settings
-export async function PUT(request: Request) {
+// POST /api/settings - Save property settings (using POST instead of PUT for simplicity)
+export async function POST(request: Request) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -69,19 +69,8 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const supabase = createServerClient();
 
-    // First try to get existing settings
-    const { data: existing, error: fetchError } = await supabase
-      .from('property_settings')
-      .select('id')
-      .limit(1);
-
-    if (fetchError) {
-      console.error('Fetch existing error:', fetchError);
-      return NextResponse.json({ error: 'Fetch error: ' + fetchError.message }, { status: 500 });
-    }
-
     const updateData = {
-      name: body.name,
+      name: body.name || 'American Inn and RV Park',
       address: body.address || '',
       phone: body.phone || '',
       city_tax_rate: body.city_tax_rate || 0.07,
@@ -95,32 +84,19 @@ export async function PUT(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    let result;
-    if (existing && existing.length > 0) {
-      // Update existing
-      const { data, error } = await supabase
-        .from('property_settings')
-        .update(updateData)
-        .eq('id', existing[0].id)
-        .select()
-        .single();
-      result = { data, error };
-    } else {
-      // Insert new
-      const { data, error } = await supabase
-        .from('property_settings')
-        .insert([updateData])
-        .select()
-        .single();
-      result = { data, error };
+    // Use upsert to insert or update
+    const { data, error } = await supabase
+      .from('property_settings')
+      .upsert(updateData, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Save error:', error);
+      return NextResponse.json({ error: 'Save error: ' + error.message }, { status: 500 });
     }
 
-    if (result.error) {
-      console.error('Save error:', result.error);
-      return NextResponse.json({ error: 'Save error: ' + result.error.message }, { status: 500 });
-    }
-
-    return NextResponse.json(result.data);
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('Error saving settings:', error);
     return NextResponse.json({ error: String(error) }, { status: 500 });

@@ -91,18 +91,21 @@ export default function SettingsPage() {
 
       console.log('Saving settings:', payload);
       const res = await fetch('/api/settings', {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
       });
 
-      console.log('Response status:', res.status, res.statusText);
+      console.log('Response status:', res.status);
+      const text = await res.text();
+      console.log('Response body:', text);
 
       if (res.ok) {
         alert('Settings saved successfully!');
+        fetchSettings(); // Reload settings after save
       } else {
-        alert('Error ' + res.status + ': ' + res.statusText);
+        alert('Error ' + res.status + ': ' + text);
       }
     } catch (error) {
       console.error('Error saving settings:', error);
