@@ -7,27 +7,38 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const GUEST_ROOMS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212];
-const RV_SITES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const RV_SITES = Array.from({ length: 15 }, (_, i) => i + 1);
 
 interface Entry {
   id: string;
-  date: string;
-  room_number: number;
   entry_type: 'guest' | 'rv';
-  name: string;
-  check_in: string;
-  check_out: string;
-  rate: number;
+  date: string;
+  room_id: string | null;
+  site_id: string | null;
+  customer_name: string;
+  rate_plan_id: string | null;
+  check_in: string | null;
+  check_out: string | null;
+  room_rate: number;
   tax_c: number;
   tax_s: number;
+  pet_fee: number;
+  pet_count: number;
+  extra_charges: any[];
+  subtotal: number;
   total: number;
   cash: number | null;
   cc: number | null;
   note: string | null;
+  is_refund: boolean;
+  refund_amount: number;
+  status: string;
 }
 
 export default function ReportsPage() {
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
+  const [selectedYear, setSelectedYear] = useState(dayjs().format('YYYY'));
+  const [reportType, setReportType] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -38,41 +49,45 @@ export default function ReportsPage() {
   const fetchEntries = async () => {
     try {
       const res = await fetch(`/api/entries?month=${selectedMonth}`);
-      const data = await res.json();
-      setEntries(data);
+      if (res.ok) {
+        const data = await res.json();
+        setEntries(data);
+      }
     } catch (error) {
       console.error('Error fetching entries:', error);
     }
   };
 
-  // Get entries for a specific day
-  const getEntriesForDate = (date: string) => {
-    return entries.filter((e) => e.date === date);
+  const getRoomNumber = (roomId: string | null) => {
+    if (!roomId) return null;
+    const match = roomId.match(/(\d+)$/);
+    return match ? parseInt(match[1]) : null;
   };
 
-  // Get monthly summary
+  const getSiteNumber = (siteId: string | null) => {
+    if (!siteId) return null;
+    const match = siteId.match(/(\d+)$/);
+    return match ? parseInt(match[1]) : null;
+  };
+
   const getMonthlySummary = () => {
-    const monthEntries = entries.filter((e) => {
-      const date = dayjs(e.date);
-      return date.format('YYYY-MM') === selectedMonth;
-    });
-
-    const guestEntries = monthEntries.filter((e) => e.entry_type === 'guest');
-    const rvEntries = monthEntries.filter((e) => e.entry_type === 'rv');
-
-    const sum = (arr: Entry[], field: keyof Entry) =>
-      arr.reduce((s, e) => s + (Number(e[field]) || 0), 0);
+    const guestEntries = entries.filter((e) => e.entry_type === 'guest' && e.status === 'active');
+    const rvEntries = entries.filter((e) => e.entry_type === 'rv' && e.status === 'active');
 
     return {
-      guestCount: guestEntries.filter((e) => e.rate > 0).length,
-      rvCount: rvEntries.filter((e) => e.rate > 0).length,
-      totalRate: sum(monthEntries, 'rate'),
-      totalTaxC: sum(monthEntries, 'tax_c'),
-      totalTaxS: sum(monthEntries, 'tax_s'),
-      total: sum(monthEntries, 'total'),
-      totalCash: sum(monthEntries, 'cash'),
-      totalCC: sum(monthEntries, 'cc'),
-      entries: monthEntries,
+      totalGuestRooms: guestEntries.length,
+      totalRVSites: rvEntries.length,
+      totalGuestRevenue: guestEntries.reduce((sum, e) => sum + e.subtotal, 0),
+      totalGuestTaxC: guestEntries.reduce((sum, e) => sum + e.tax_c, 0),
+      totalGuestTaxS: guestEntries.reduce((sum, e) => sum + e.tax_s, 0),
+      totalGuestPetFees: guestEntries.reduce((sum, e) => sum + e.pet_fee, 0),
+      totalGuestExtra: guestEntries.reduce((sum, e) => sum + (e.extra_charges?.reduce((s, ec) => s + ec.amount, 0) || 0), 0),
+      totalGuest: guestEntries.reduce((sum, e) => sum + e.total, 0),
+      totalRV: rvEntries.reduce((sum, e) => sum + e.total, 0),
+      totalCash: entries.reduce((sum, e) => sum + (e.cash || 0), 0),
+      totalCC: entries.reduce((sum, e) => sum + (e.cc || 0), 0),
+      totalRefunds: entries.filter((e) => e.is_refund).reduce((sum, e) => sum + e.total, 0),
+      netTotal: entries.reduce((sum, e) => sum + e.total, 0),
     };
   };
 
@@ -82,154 +97,64 @@ export default function ReportsPage() {
     setLoading(true);
     try {
       const wb = XLSX.utils.book_new();
+      const monthName = dayjs(selectedMonth + '-01').format('MMMM YYYY');
       const year = selectedMonth.split('-')[0];
-      const monthName = dayjs(selectedMonth + '-01').format('MMM YY').toUpperCase();
-
-      // Get days in month
       const daysInMonth = dayjs(selectedMonth + '-01').daysInMonth();
 
-      // Sheet 1: Daily Sheet (matches Excel structure)
+      // Create daily data array
       const dailyData: any[] = [];
 
-      // Add date header
-      dailyData.push([
-        `Date: ${dayjs(selectedMonth + '-01').format('MMMM YYYY')}`,
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        'Month of ____________________________________',
-      ]);
+      // Title row
+      dailyData.push([`American Inn and RV Park - ${monthName}`]);
+      dailyData.push([`Date: ${monthName}`, '', '', '', '', '', '', '', '', '', '', 'Month of ________________________________']);
 
       // Guest Rooms header
       dailyData.push([
         'Room#', 'Name', 'In', 'Out', 'Rate', 'Tx-C7%', 'Tx-S6%', 'Total', 'Cash', 'CC',
-        '',
-        'Guest Rooms',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        'RV',
-        '',
-        '',
-        '',
-        'TOTALS',
+        '', 'Guest Rooms', '', '', '', '', '', '', '', 'RV', '', '', '', 'TOTALS'
       ]);
 
-      // Guest room rows
-      GUEST_ROOMS.forEach((roomNum) => {
-        const roomEntries = entries.filter(
-          (e) => e.room_number === roomNum && e.entry_type === 'guest'
-        );
+      // Process each day of the month
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = dayjs(`${selectedMonth}-${day.toString().padStart(2, '0')}`).format('YYYY-MM-DD');
+        const dayEntries = entries.filter((e) => e.date === date);
 
-        // For each day, create a row
-        for (let day = 1; day <= daysInMonth; day++) {
-          const date = dayjs(`${selectedMonth}-${day.toString().padStart(2, '0')}`).format('YYYY-MM-DD');
-          const entry = roomEntries.find((e) => e.date === date);
+        // For each room, check if there's an entry
+        GUEST_ROOMS.forEach((roomNum) => {
+          const entry = dayEntries.find((e) => e.entry_type === 'guest' && getRoomNumber(e.room_id) === roomNum);
 
-          if (entry && entry.rate > 0) {
+          if (entry) {
             dailyData.push([
               roomNum,
-              entry.name || '',
+              entry.customer_name || '',
               entry.check_in ? dayjs(entry.check_in).format('M/D') : '',
               entry.check_out ? dayjs(entry.check_out).format('M/D') : '',
-              entry.rate,
+              entry.room_rate,
               entry.tax_c,
               entry.tax_s,
-              entry.total,
+              entry.subtotal,
               entry.cash || '',
               entry.cc || '',
             ]);
-          } else {
-            dailyData.push([roomNum, '', '', '', 0, 0, 0, 0, '', '']);
           }
-        }
-      });
+        });
+      }
 
-      // Add totals row for guest rooms
-      const guestEntries = entries.filter((e) => e.entry_type === 'guest' && e.rate > 0);
-      const guestTotal = guestEntries.reduce((sum, e) => sum + e.total, 0);
-      const guestCash = guestEntries.reduce((sum, e) => sum + (e.cash || 0), 0);
-      const guestCC = guestEntries.reduce((sum, e) => sum + (e.cc || 0), 0);
-      const guestRate = guestEntries.reduce((sum, e) => sum + e.rate, 0);
-      const guestTaxC = guestEntries.reduce((sum, e) => sum + e.tax_c, 0);
-      const guestTaxS = guestEntries.reduce((sum, e) => sum + e.tax_s, 0);
-
-      // Daily summary section header
-      dailyData.push(['', '', '', '', '', '', '', '', '', '', '', 'Date', '# Rms', 'Rate', 'Tx-C 7%', 'Tx-S 6%', 'Total', 'Cash', 'CC']);
-      dailyData.push(['', '', '', '', '', '', '', '', '', '', '', '1', guestEntries.filter(e => dayjs(e.date).date() === 1).length, guestRate, guestTaxC, guestTaxS, guestTotal, guestCash, guestCC]);
-
-      // RV Section header
+      // Totals row
       dailyData.push([
-        '', '', '', '', '', '', '', '', '', '',
-        '',
-        'RV # 1', '', '', '', '', '', '',
-      ]);
-      dailyData.push([
-        'Site #', 'Name', 'In', 'Out', 'Rate', 'Cash', 'CC', 'Total',
+        '', '', 'TOTAL', '',
+        summary.totalGuestRevenue,
+        summary.totalGuestTaxC,
+        summary.totalGuestTaxS,
+        summary.totalGuest,
+        summary.totalCash,
+        summary.totalCC,
       ]);
 
-      // RV rows
-      RV_SITES.forEach((siteNum) => {
-        const siteEntries = entries.filter(
-          (e) => e.room_number === siteNum && e.entry_type === 'rv'
-        );
+      const ws = XLSX.utils.aoa_to_sheet(dailyData);
+      XLSX.utils.book_append_sheet(wb, ws, monthName.substring(0, 3));
 
-        for (let day = 1; day <= daysInMonth; day++) {
-          const date = dayjs(`${selectedMonth}-${day.toString().padStart(2, '0')}`).format('YYYY-MM-DD');
-          const entry = siteEntries.find((e) => e.date === date);
-
-          if (entry && entry.rate > 0) {
-            dailyData.push([
-              `RV # ${siteNum}`,
-              entry.name || '',
-              entry.check_in ? dayjs(entry.check_in).format('M/D') : '',
-              entry.check_out ? dayjs(entry.check_out).format('M/D') : '',
-              entry.rate,
-              entry.cash || '',
-              entry.cc || '',
-              entry.note || '',
-            ]);
-          } else {
-            dailyData.push([`RV # ${siteNum}`, '', '', '', '', '', '', '']);
-          }
-        }
-      });
-
-      const wsDaily = XLSX.utils.aoa_to_sheet(dailyData);
-      XLSX.utils.book_append_sheet(wb, wsDaily, monthName);
-
-      // Sheet 2: Monthly Summary
-      const summaryData = [
-        ['Monthly Summary', selectedMonth],
-        [''],
-        ['Guest Rooms'],
-        ['Metric', 'Value'],
-        ['Total Revenue', summary.total],
-        ['Total Cash', summary.totalCash],
-        ['Total CC', summary.totalCC],
-        ['City Tax (7%)', summary.totalTaxC],
-        ['State Tax (6%)', summary.totalTaxS],
-        ['Net Total', summary.total - summary.totalTaxC - summary.totalTaxS],
-        [''],
-        ['RV Sites'],
-        ['Total RV Revenue', summary.entries.filter((e) => e.entry_type === 'rv').reduce((sum, e) => sum + e.total, 0)],
-      ];
-
-      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
-
-      XLSX.writeFile(wb, `PMS_${selectedMonth}.xlsx`);
+      XLSX.writeFile(wb, `American_Inn_${monthName.replace(' ', '_')}.xlsx`);
     } catch (error) {
       console.error('Error exporting Excel:', error);
       alert('Error exporting Excel file');
@@ -247,9 +172,10 @@ export default function ReportsPage() {
       // Title
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text('Property Management System', 105, 20, { align: 'center' });
+      doc.text('American Inn and RV Park', 105, 20, { align: 'center' });
 
       doc.setFontSize(14);
+      doc.setFont('helvetica', 'normal');
       doc.text(`Monthly Report - ${monthName}`, 105, 30, { align: 'center' });
 
       // Summary Section
@@ -259,46 +185,57 @@ export default function ReportsPage() {
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
-      doc.text(`Total Revenue: $${summary.total.toFixed(2)}`, 14, 55);
-      doc.text(`Total Cash: $${summary.totalCash.toFixed(2)}`, 14, 62);
-      doc.text(`Total CC: $${summary.totalCC.toFixed(2)}`, 14, 69);
-      doc.text(`City Tax (7%): $${summary.totalTaxC.toFixed(2)}`, 14, 76);
-      doc.text(`State Tax (6%): $${summary.totalTaxS.toFixed(2)}`, 14, 83);
+
+      const summaryLines = [
+        `Total Guest Revenue: $${summary.totalGuest.toFixed(2)}`,
+        `Total RV Revenue: $${summary.totalRV.toFixed(2)}`,
+        `City Tax (7%): $${summary.totalGuestTaxC.toFixed(2)}`,
+        `State Tax (6%): $${summary.totalGuestTaxS.toFixed(2)}`,
+        `Pet Fees: $${summary.totalGuestPetFees.toFixed(2)}`,
+        `Total Cash: $${summary.totalCash.toFixed(2)}`,
+        `Total Credit Card: $${summary.totalCC.toFixed(2)}`,
+        `Refunds: $${Math.abs(summary.totalRefunds).toFixed(2)}`,
+        `Net Total: $${summary.netTotal.toFixed(2)}`,
+      ];
+
+      summaryLines.forEach((line, i) => {
+        doc.text(line, 14, 55 + i * 7);
+      });
 
       // Guest Rooms Table
-      doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
-      doc.text('Guest Rooms', 14, 97);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Guest Rooms', 14, 130);
 
       const guestRows = GUEST_ROOMS.map((roomNum) => {
         const roomEntries = entries.filter(
-          (e) => e.room_number === roomNum && e.entry_type === 'guest' && e.rate > 0
+          (e) => e.entry_type === 'guest' && getRoomNumber(e.room_id) === roomNum && e.status === 'active'
         );
-        const totalRate = roomEntries.reduce((sum, e) => sum + e.rate, 0);
+        const totalRate = roomEntries.reduce((sum, e) => sum + e.room_rate, 0);
         const totalCash = roomEntries.reduce((sum, e) => sum + (e.cash || 0), 0);
         const totalCC = roomEntries.reduce((sum, e) => sum + (e.cc || 0), 0);
         return [roomNum, roomEntries.length, `$${totalRate.toFixed(2)}`, `$${totalCash.toFixed(2)}`, `$${totalCC.toFixed(2)}`];
       });
 
       autoTable(doc, {
-        startY: 102,
+        startY: 135,
         head: [['Room #', 'Stays', 'Total Rate', 'Cash', 'CC']],
         body: guestRows,
         theme: 'striped',
-        headStyles: { fillColor: [59, 130, 246] },
+        headStyles: { fillColor: [45, 93, 47] },
       });
 
       // RV Sites Table
       const finalY = (doc as any).lastAutoTable.finalY || 150;
-      doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
       doc.text('RV Sites', 14, finalY + 15);
 
       const rvRows = RV_SITES.map((siteNum) => {
         const siteEntries = entries.filter(
-          (e) => e.room_number === siteNum && e.entry_type === 'rv' && e.rate > 0
+          (e) => e.entry_type === 'rv' && getSiteNumber(e.site_id) === siteNum && e.status === 'active'
         );
-        const totalRate = siteEntries.reduce((sum, e) => sum + e.rate, 0);
+        const totalRate = siteEntries.reduce((sum, e) => sum + e.room_rate, 0);
         return [`RV # ${siteNum}`, siteEntries.length, `$${totalRate.toFixed(2)}`];
       });
 
@@ -307,20 +244,20 @@ export default function ReportsPage() {
         head: [['Site #', 'Stays', 'Total Rate']],
         body: rvRows,
         theme: 'striped',
-        headStyles: { fillColor: [34, 197, 94] },
+        headStyles: { fillColor: [59, 130, 246] },
       });
 
       // Footer
       doc.setFontSize(8);
       doc.setTextColor(128);
       doc.text(
-        `Generated on ${dayjs().format('MMMM D, YYYY')}`,
+        `Generated on ${dayjs().format('MMMM D, YYYY')} - Silk PMS`,
         105,
         doc.internal.pageSize.getHeight() - 10,
         { align: 'center' }
       );
 
-      doc.save(`PMS_Report_${selectedMonth}.pdf`);
+      doc.save(`American_Inn_Report_${monthName.replace(' ', '_')}.pdf`);
     } catch (error) {
       console.error('Error exporting PDF:', error);
       alert('Error exporting PDF file');
@@ -330,91 +267,190 @@ export default function ReportsPage() {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Reports</h2>
-          <p className="text-slate-500">Export data for your accountant</p>
+          <h1 className="text-2xl font-bold text-white">Reports</h1>
+          <p className="text-slate-400">Generate reports for your accountant</p>
         </div>
-        <div className="flex items-center gap-4">
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-4 py-2 border border-slate-300 rounded-lg"
-          />
+      </div>
+
+      {/* Report Type & Date Selection */}
+      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Report Type</label>
+            <div className="flex gap-2">
+              {(['monthly', 'weekly', 'daily'] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setReportType(type)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    reportType === type
+                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
+                  }`}
+                >
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              {reportType === 'monthly' ? 'Month' : reportType === 'weekly' ? 'Week Starting' : 'Date'}
+            </label>
+            {reportType === 'monthly' ? (
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            ) : reportType === 'weekly' ? (
+              <input
+                type="date"
+                value={selectedMonth + '-01'}
+                onChange={(e) => setSelectedMonth(dayjs(e.target.value).format('YYYY-MM'))}
+                className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            ) : (
+              <input
+                type="date"
+                value={selectedMonth + '-01'}
+                onChange={(e) => setSelectedMonth(dayjs(e.target.value).format('YYYY-MM-DD'))}
+                className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Year</label>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              {[2024, 2025, 2026, 2027].map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="text-3xl font-bold text-slate-800">
-            ${summary.total.toFixed(2)}
-          </div>
-          <div className="text-sm text-slate-500 mt-1">Total Revenue</div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <p className="text-sm text-slate-400">Total Revenue</p>
+          <p className="text-3xl font-bold text-amber-400">${summary.netTotal.toFixed(2)}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="text-3xl font-bold text-green-600">
-            ${summary.totalCash.toFixed(2)}
-          </div>
-          <div className="text-sm text-slate-500 mt-1">Cash</div>
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <p className="text-sm text-slate-400">Guest Revenue</p>
+          <p className="text-2xl font-bold text-white">${summary.totalGuest.toFixed(2)}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="text-3xl font-bold text-purple-600">
-            ${summary.totalCC.toFixed(2)}
-          </div>
-          <div className="text-sm text-slate-500 mt-1">Credit Card</div>
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <p className="text-sm text-slate-400">RV Revenue</p>
+          <p className="text-2xl font-bold text-blue-400">${summary.totalRV.toFixed(2)}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="text-3xl font-bold text-slate-800">
-            {entries.filter((e) => e.rate > 0).length}
-          </div>
-          <div className="text-sm text-slate-500 mt-1">Total Entries</div>
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <p className="text-sm text-slate-400">Guest Rooms Sold</p>
+          <p className="text-2xl font-bold text-white">{summary.totalGuestRooms}</p>
+        </div>
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <p className="text-sm text-slate-400">RV Sites Used</p>
+          <p className="text-2xl font-bold text-white">{summary.totalRVSites}</p>
+        </div>
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <p className="text-sm text-slate-400">Cash</p>
+          <p className="text-2xl font-bold text-green-400">${summary.totalCash.toFixed(2)}</p>
+        </div>
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <p className="text-sm text-slate-400">Credit Card</p>
+          <p className="text-2xl font-bold text-purple-400">${summary.totalCC.toFixed(2)}</p>
+        </div>
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <p className="text-sm text-slate-400">Refunds</p>
+          <p className="text-2xl font-bold text-red-400">${Math.abs(summary.totalRefunds).toFixed(2)}</p>
+        </div>
+      </div>
+
+      {/* Tax Breakdown */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <p className="text-sm text-slate-400">City Tax (7%)</p>
+          <p className="text-xl font-bold text-white">${summary.totalGuestTaxC.toFixed(2)}</p>
+        </div>
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <p className="text-sm text-slate-400">State Tax (6%)</p>
+          <p className="text-xl font-bold text-white">${summary.totalGuestTaxS.toFixed(2)}</p>
+        </div>
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <p className="text-sm text-slate-400">Pet Fees Collected</p>
+          <p className="text-xl font-bold text-white">${summary.totalGuestPetFees.toFixed(2)}</p>
         </div>
       </div>
 
       {/* Export Buttons */}
-      <div className="bg-white rounded-xl shadow-sm p-8">
-        <h3 className="text-lg font-semibold text-slate-800 mb-6">Export Reports</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="border border-slate-200 rounded-xl p-6 hover:border-green-300 transition">
-            <div className="flex items-center gap-4 mb-4">
-              <span className="text-4xl">📊</span>
-              <div>
-                <h4 className="font-semibold text-slate-800">Excel Export</h4>
-                <p className="text-sm text-slate-500">
-                  Download {dayjs(selectedMonth + '-01').format('MMMM YYYY')} data in your Excel format
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={exportToExcel}
-              disabled={loading}
-              className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
-            >
-              {loading ? 'Generating...' : 'Download Excel (.xlsx)'}
-            </button>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <button
+          onClick={exportToExcel}
+          disabled={loading}
+          className="flex items-center justify-center gap-3 p-6 rounded-xl bg-green-600/10 border border-green-600/20 hover:bg-green-600/20 transition disabled:opacity-50"
+        >
+          <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <div className="text-left">
+            <p className="font-semibold text-white">Export to Excel</p>
+            <p className="text-sm text-slate-400">Download {dayjs(selectedMonth + '-01').format('MMMM YYYY')} data</p>
           </div>
+        </button>
 
-          <div className="border border-slate-200 rounded-xl p-6 hover:border-red-300 transition">
-            <div className="flex items-center gap-4 mb-4">
-              <span className="text-4xl">📄</span>
-              <div>
-                <h4 className="font-semibold text-slate-800">PDF Report</h4>
-                <p className="text-sm text-slate-500">
-                  Generate formatted report for your accountant
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={exportToPDF}
-              disabled={loading}
-              className="w-full bg-red-600 text-white py-3 rounded-lg font-medium hover:bg-red-700 transition disabled:opacity-50"
-            >
-              {loading ? 'Generating...' : 'Download PDF Report'}
-            </button>
+        <button
+          onClick={exportToPDF}
+          disabled={loading}
+          className="flex items-center justify-center gap-3 p-6 rounded-xl bg-red-600/10 border border-red-600/20 hover:bg-red-600/20 transition disabled:opacity-50"
+        >
+          <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          <div className="text-left">
+            <p className="font-semibold text-white">Export to PDF</p>
+            <p className="text-sm text-slate-400">Generate formatted report</p>
           </div>
+        </button>
+      </div>
+
+      {/* Reset Section */}
+      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <h3 className="text-lg font-semibold text-white mb-4">System Reset</h3>
+        <p className="text-sm text-slate-400 mb-4">
+          Yearly reset creates a backup of all data before clearing entries. Factory reset deletes everything.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button
+            onClick={() => {
+              if (confirm('This will create a backup and clear all entries for the year. Continue?')) {
+                alert('Yearly reset would create backup and clear data.');
+              }
+            }}
+            className="px-4 py-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition"
+          >
+            Yearly Reset
+          </button>
+          <button
+            onClick={() => {
+              if (confirm('Factory reset will delete ALL data including users and settings. This cannot be undone!')) {
+                alert('Factory reset would delete all data.');
+              }
+            }}
+            className="px-4 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition"
+          >
+            Factory Reset
+          </button>
         </div>
       </div>
     </div>

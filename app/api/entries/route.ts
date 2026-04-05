@@ -1,28 +1,23 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 
-function getLastDayOfMonth(year: number, month: number): string {
-  const lastDay = new Date(year, month, 0).getDate();
-  return `${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
-}
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const month = searchParams.get('month'); // YYYY-MM format
+    const date = searchParams.get('date');
+    const month = searchParams.get('month');
 
     const supabase = createServerClient();
 
     let query = supabase
-      .from('daily_entries')
+      .from('entries')
       .select('*')
-      .order('date', { ascending: false })
-      .order('room_number', { ascending: true });
+      .order('created_at', { ascending: false });
 
-    if (month) {
-      const [year, monthNum] = month.split('-').map(Number);
-      const endDate = `${year}-${getLastDayOfMonth(year, monthNum)}`;
-      query = query.gte('date', `${month}-01`).lte('date', endDate);
+    if (date) {
+      query = query.eq('date', date);
+    } else if (month) {
+      query = query.like('date', `${month}%`);
     }
 
     const { data, error } = await query;
@@ -41,29 +36,77 @@ export async function POST(request: Request) {
     const body = await request.json();
     const supabase = createServerClient();
 
-    // Calculate taxes and total
-    const rate = body.rate || 0;
-    const tax_c = rate * 0.07; // 7%
-    const tax_s = rate * 0.06; // 6%
-    const total = rate + tax_c + tax_s;
+    const {
+      entry_type,
+      date,
+      room_id,
+      site_id,
+      customer_name,
+      rate_plan_id,
+      check_in,
+      check_out,
+      room_rate,
+      pet_fee,
+      pet_count,
+      extra_charges,
+      cash,
+      cc,
+      note,
+      is_refund,
+      status,
+    } = body;
+
+    // Calculate taxes for guest rooms
+    let tax_c = 0;
+    let tax_s = 0;
+    let subtotal = room_rate || 0;
+    let total = room_rate || 0;
+
+    if (entry_type === 'guest' && room_rate) {
+      tax_c = room_rate * 0.07; // 7% city tax
+      tax_s = room_rate * 0.06; // 6% state tax
+      subtotal = room_rate + tax_c + tax_s;
+    }
+
+    // Add pet fees
+    if (pet_fee && pet_fee > 0) {
+      total = subtotal + pet_fee;
+    } else {
+      total = subtotal;
+    }
+
+    // Handle refund
+    if (is_refund && body.refund_amount) {
+      total = -Math.abs(body.refund_amount);
+    }
 
     const entryData = {
-      date: body.date,
-      room_number: body.room_number,
-      name: body.name || null,
-      check_in: body.check_in || null,
-      check_out: body.check_out || null,
-      rate: rate,
-      tax_c: tax_c,
-      tax_s: tax_s,
-      total: total,
-      cash: body.cash || null,
-      cc: body.cc || null,
-      entry_type: body.entry_type || 'guest', // 'guest' or 'rv'
+      entry_type,
+      date,
+      room_id: room_id || null,
+      site_id: site_id || null,
+      customer_name: customer_name || null,
+      rate_plan_id: rate_plan_id || null,
+      check_in: check_in || null,
+      check_out: check_out || null,
+      room_rate: room_rate || 0,
+      tax_c,
+      tax_s,
+      pet_fee: pet_fee || 0,
+      pet_count: pet_count || 0,
+      extra_charges: extra_charges || [],
+      subtotal,
+      total,
+      cash: cash || null,
+      cc: cc || null,
+      note: note || null,
+      is_refund: is_refund || false,
+      refund_amount: is_refund ? Math.abs(body.refund_amount || 0) : 0,
+      status: status || 'active',
     };
 
     const { data, error } = await supabase
-      .from('daily_entries')
+      .from('entries')
       .insert([entryData])
       .select()
       .single();

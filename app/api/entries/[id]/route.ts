@@ -1,42 +1,83 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 
-export async function PUT(request: Request) {
+type RouteParams = { params: Promise<{ id: string }> };
+
+export async function PUT(request: Request, { params }: RouteParams) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json({ error: 'Entry ID required' }, { status: 400 });
-    }
-
+    const { id } = await params;
     const body = await request.json();
     const supabase = createServerClient();
 
-    // Recalculate taxes
-    const rate = body.rate || 0;
-    const tax_c = rate * 0.07;
-    const tax_s = rate * 0.06;
-    const total = rate + tax_c + tax_s;
+    const {
+      entry_type,
+      date,
+      room_id,
+      site_id,
+      customer_name,
+      rate_plan_id,
+      check_in,
+      check_out,
+      room_rate,
+      pet_fee,
+      pet_count,
+      extra_charges,
+      cash,
+      cc,
+      note,
+      is_refund,
+      status,
+    } = body;
 
-    const updateData = {
-      date: body.date,
-      room_number: body.room_number,
-      entry_type: body.entry_type,
-      name: body.name || null,
-      check_in: body.check_in || null,
-      check_out: body.check_out || null,
-      rate: rate,
-      tax_c: tax_c,
-      tax_s: tax_s,
-      total: total,
-      cash: body.cash,
-      cc: body.cc,
-      note: body.note || null,
+    let tax_c = 0;
+    let tax_s = 0;
+    let subtotal = room_rate || 0;
+    let total = room_rate || 0;
+
+    if (entry_type === 'guest' && room_rate) {
+      tax_c = room_rate * 0.07;
+      tax_s = room_rate * 0.06;
+      subtotal = room_rate + tax_c + tax_s;
+    }
+
+    if (pet_fee && pet_fee > 0) {
+      total = subtotal + pet_fee;
+    } else {
+      total = subtotal;
+    }
+
+    if (is_refund && body.refund_amount) {
+      total = -Math.abs(body.refund_amount);
+    }
+
+    const updateData: any = {
+      entry_type,
+      date,
+      room_id: room_id || null,
+      site_id: site_id || null,
+      customer_name: customer_name || null,
+      rate_plan_id: rate_plan_id || null,
+      check_in: check_in || null,
+      check_out: check_out || null,
+      room_rate: room_rate || 0,
+      tax_c,
+      tax_s,
+      pet_fee: pet_fee || 0,
+      pet_count: pet_count || 0,
+      extra_charges: extra_charges || [],
+      subtotal,
+      total,
+      cash: cash || null,
+      cc: cc || null,
+      note: note || null,
+      is_refund: is_refund || false,
+      refund_amount: is_refund ? Math.abs(body.refund_amount || 0) : 0,
+      status: status || 'active',
+      updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabase
-      .from('daily_entries')
+      .from('entries')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -51,18 +92,15 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: Request, { params }: RouteParams) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json({ error: 'Entry ID required' }, { status: 400 });
-    }
-
+    const { id } = await params;
     const supabase = createServerClient();
 
-    const { error } = await supabase.from('daily_entries').delete().eq('id', id);
+    const { error } = await supabase
+      .from('entries')
+      .delete()
+      .eq('id', id);
 
     if (error) throw error;
 
