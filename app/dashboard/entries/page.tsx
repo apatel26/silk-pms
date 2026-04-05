@@ -10,8 +10,8 @@ interface Entry {
   id: string;
   entry_type: 'guest' | 'rv';
   date: string;
-  room_id: string | null;
-  site_id: string | null;
+  room_number: string | null;
+  site_number: string | null;
   customer_name: string;
   rate_plan_id: string | null;
   check_in: string | null;
@@ -102,27 +102,15 @@ export default function EntriesPage() {
     }
   };
 
-  const getRoomNumber = (roomId: string | null) => {
-    if (!roomId) return null;
-    const match = roomId.match(/(\d+)$/);
-    return match ? parseInt(match[1]) : null;
-  };
-
-  const getSiteNumber = (siteId: string | null) => {
-    if (!siteId) return null;
-    const match = siteId.match(/(\d+)$/);
-    return match ? parseInt(match[1]) : null;
-  };
-
   const getEntryForRoom = (roomNum: number) => {
     return entries.find(
-      (e) => e.entry_type === 'guest' && getRoomNumber(e.room_id) === roomNum && e.status === 'active'
+      (e) => e.entry_type === 'guest' && e.room_number === String(roomNum) && e.status === 'active'
     );
   };
 
   const getEntryForSite = (siteNum: number) => {
     return entries.find(
-      (e) => e.entry_type === 'rv' && getSiteNumber(e.site_id) === siteNum && e.status === 'active'
+      (e) => e.entry_type === 'rv' && e.site_number === String(siteNum) && e.status === 'active'
     );
   };
 
@@ -174,8 +162,8 @@ export default function EntriesPage() {
     const payload = {
       entry_type: formData.entry_type,
       date: formData.date,
-      room_id: formData.entry_type === 'guest' ? `room-${formData.room_number}` : null,
-      site_id: formData.entry_type === 'rv' ? `rv-${formData.site_number}` : null,
+      room_number: formData.entry_type === 'guest' ? formData.room_number : null,
+      site_number: formData.entry_type === 'rv' ? formData.site_number : null,
       customer_name: formData.customer_name,
       rate_plan_id: null,
       check_in: formData.check_in || null,
@@ -219,8 +207,8 @@ export default function EntriesPage() {
     setFormData({
       entry_type: entry.entry_type,
       date: entry.date,
-      room_number: entry.room_id ? String(getRoomNumber(entry.room_id) || '') : '101',
-      site_number: entry.site_id ? String(getSiteNumber(entry.site_id) || '') : '1',
+      room_number: entry.room_number || '101',
+      site_number: entry.site_number || '1',
       customer_name: entry.customer_name || '',
       rate_plan: 'standard',
       custom_rate: entry.room_rate,

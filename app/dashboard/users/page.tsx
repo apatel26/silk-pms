@@ -6,7 +6,7 @@ interface User {
   id: string;
   username: string;
   full_name: string | null;
-  role: 'admin' | 'manager' | 'staff';
+  role: string;
   active: boolean;
   created_at: string;
 }
@@ -20,7 +20,7 @@ export default function UsersPage() {
     username: '',
     password: '',
     full_name: '',
-    role: 'staff' as 'admin' | 'manager' | 'staff',
+    role: 'staff',
   });
 
   useEffect(() => {
@@ -63,7 +63,7 @@ export default function UsersPage() {
           alert('Error: ' + (result.error || 'Failed to update'));
           return;
         }
-        // Log out if username or password changed
+        alert('User updated successfully!');
         if (formData.password || formData.username !== editingUser.username) {
           await fetch('/api/auth', { method: 'DELETE' });
           window.location.href = '/';
@@ -80,6 +80,7 @@ export default function UsersPage() {
           alert('Error: ' + (result.error || 'Failed to create'));
           return;
         }
+        alert('User created successfully!');
       }
       setShowModal(false);
       setEditingUser(null);
@@ -136,24 +137,28 @@ export default function UsersPage() {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'admin':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-500/20 text-red-400';
       case 'manager':
-        return 'bg-purple-100 text-purple-700';
+        return 'bg-purple-500/20 text-purple-400';
       default:
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-500/20 text-blue-400';
     }
   };
 
   if (loading) {
-    return <div className="text-center py-12 text-slate-500">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-slate-400">Loading...</div>
+      </div>
+    );
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">User Management</h2>
-          <p className="text-slate-500">{users.length} users</p>
+          <h1 className="text-2xl font-bold text-white">User Management</h1>
+          <p className="text-slate-400">{users.length} users</p>
         </div>
         <button
           onClick={() => {
@@ -161,29 +166,29 @@ export default function UsersPage() {
             setEditingUser(null);
             setShowModal(true);
           }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition"
+          className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-semibold hover:from-amber-400 hover:to-amber-500 transition"
         >
           + Add User
         </button>
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
         <table className="w-full">
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="bg-slate-800 border-b border-slate-700">
             <tr>
-              <th className="text-left px-6 py-3 text-sm font-semibold text-slate-600">Username</th>
-              <th className="text-left px-6 py-3 text-sm font-semibold text-slate-600">Full Name</th>
-              <th className="text-left px-6 py-3 text-sm font-semibold text-slate-600">Role</th>
-              <th className="text-left px-6 py-3 text-sm font-semibold text-slate-600">Status</th>
-              <th className="text-right px-6 py-3 text-sm font-semibold text-slate-600">Actions</th>
+              <th className="text-left px-6 py-4 text-sm font-semibold text-slate-300">Username</th>
+              <th className="text-left px-6 py-4 text-sm font-semibold text-slate-300">Full Name</th>
+              <th className="text-left px-6 py-4 text-sm font-semibold text-slate-300">Role</th>
+              <th className="text-left px-6 py-4 text-sm font-semibold text-slate-300">Status</th>
+              <th className="text-right px-6 py-4 text-sm font-semibold text-slate-300">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-800">
             {users.map((user) => (
-              <tr key={user.id} className="hover:bg-slate-50">
-                <td className="px-6 py-4 font-medium text-slate-800">{user.username}</td>
-                <td className="px-6 py-4 text-slate-600">{user.full_name || '—'}</td>
+              <tr key={user.id} className="hover:bg-slate-800/50">
+                <td className="px-6 py-4 font-medium text-white">{user.username}</td>
+                <td className="px-6 py-4 text-slate-400">{user.full_name || '—'}</td>
                 <td className="px-6 py-4">
                   <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
                     {user.role}
@@ -192,10 +197,10 @@ export default function UsersPage() {
                 <td className="px-6 py-4">
                   <button
                     onClick={() => handleToggleActive(user)}
-                    className={`px-2 py-1 rounded text-xs font-medium ${
+                    className={`px-3 py-1 rounded text-xs font-medium transition ${
                       user.active
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-slate-100 text-slate-500'
+                        ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
                     }`}
                   >
                     {user.active ? 'Active' : 'Inactive'}
@@ -204,13 +209,13 @@ export default function UsersPage() {
                 <td className="px-6 py-4 text-right">
                   <button
                     onClick={() => handleEdit(user)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium mr-4"
+                    className="text-amber-400 hover:text-amber-300 text-sm font-medium mr-4"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(user.id)}
-                    className="text-red-600 hover:text-red-800 text-sm font-medium"
+                    className="text-red-400 hover:text-red-300 text-sm font-medium"
                   >
                     Delete
                   </button>
@@ -227,90 +232,62 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Roles Explanation */}
-      <div className="mt-8 bg-slate-50 rounded-xl p-6">
-        <h3 className="font-semibold text-slate-800 mb-4">Role Permissions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div className="bg-white rounded-lg p-4">
-            <div className="font-medium text-red-700 mb-1">Admin</div>
-            <ul className="text-slate-600 space-y-1">
-              <li>• Full access to all features</li>
-              <li>• Manage users</li>
-              <li>• View and edit all data</li>
-              <li>• Export reports</li>
-            </ul>
-          </div>
-          <div className="bg-white rounded-lg p-4">
-            <div className="font-medium text-purple-700 mb-1">Manager</div>
-            <ul className="text-slate-600 space-y-1">
-              <li>• View and edit all data</li>
-              <li>• Export reports</li>
-              <li>• Cannot manage users</li>
-            </ul>
-          </div>
-          <div className="bg-white rounded-lg p-4">
-            <div className="font-medium text-blue-700 mb-1">Staff</div>
-            <ul className="text-slate-600 space-y-1">
-              <li>• View and edit daily entries</li>
-              <li>• Export reports</li>
-              <li>• Cannot manage users</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
       {/* User Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold text-slate-800 mb-6">
-              {editingUser ? 'Edit User' : 'Add User'}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 rounded-2xl w-full max-w-md border border-slate-700">
+            <div className="px-6 py-4 border-b border-slate-700">
+              <h3 className="text-xl font-bold text-white">
+                {editingUser ? 'Edit User' : 'Add User'}
+              </h3>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Username *
                 </label>
                 <input
                   type="text"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="Enter username"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   {editingUser ? 'New Password (leave blank to keep)' : 'Password *'}
                 </label>
                 <input
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder={editingUser ? 'Leave blank to keep current' : 'Enter password'}
                   required={!editingUser}
-                  placeholder={editingUser ? 'Leave blank to keep current' : ''}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Full Name
                 </label>
                 <input
                   type="text"
                   value={formData.full_name}
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="Enter full name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Role
                 </label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
                   <option value="staff">Staff</option>
                   <option value="manager">Manager</option>
@@ -324,13 +301,13 @@ export default function UsersPage() {
                     setShowModal(false);
                     setEditingUser(null);
                   }}
-                  className="flex-1 py-2 border border-slate-300 rounded-lg font-medium hover:bg-slate-50 transition"
+                  className="flex-1 py-3 border border-slate-700 rounded-lg text-slate-300 hover:bg-slate-800 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+                  className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 rounded-lg font-semibold hover:from-amber-400 hover:to-amber-500 transition"
                 >
                   {editingUser ? 'Update' : 'Add'}
                 </button>

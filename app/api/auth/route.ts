@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { verifyPassword } from '@/lib/password';
 
 const AUTH_COOKIE_NAME = 'pms_session';
 const SESSION_COOKIE_VALUE_SEPARATOR = '|';
@@ -55,8 +56,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Check password (simple comparison - in production use bcrypt)
-    if (user.password_hash !== password) {
+    // Check password (use verifyPassword to support both legacy and hashed)
+    if (!verifyPassword(password, user.password_hash)) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 

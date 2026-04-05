@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { hashPassword } from '@/lib/password';
 
 const AUTH_COOKIE_NAME = 'pms_session';
 
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
       .from('users')
       .insert([{
         username,
-        password_hash: password, // In production, hash this!
+        password_hash: hashPassword(password),
         full_name: full_name || null,
         role,
         active: true,

@@ -1,11 +1,25 @@
--- American Inn and RV Park - Silk PMS Database Schema
+-- American Inn and RV Park - Silk PMS Database Schema (Simplified)
 -- Run this in your Supabase SQL Editor
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Property Settings (singleton)
-CREATE TABLE IF NOT EXISTS property_settings (
+-- Drop existing tables if they exist
+DROP TABLE IF EXISTS backup_records CASCADE;
+DROP TABLE IF EXISTS audit_log CASCADE;
+DROP TABLE IF EXISTS housekeeping_tasks CASCADE;
+DROP TABLE IF EXISTS extra_charges CASCADE;
+DROP TABLE IF EXISTS entries CASCADE;
+DROP TABLE IF EXISTS customers CASCADE;
+DROP TABLE IF EXISTS rv_sites CASCADE;
+DROP TABLE IF EXISTS rooms CASCADE;
+DROP TABLE IF EXISTS rate_plans CASCADE;
+DROP TABLE IF EXISTS roles CASCADE;
+DROP TABLE IF EXISTS property_settings CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+-- Property Settings
+CREATE TABLE property_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT DEFAULT 'American Inn and RV Park',
   logo_url TEXT,
@@ -15,12 +29,16 @@ CREATE TABLE IF NOT EXISTS property_settings (
   state_tax_rate NUMERIC(5,4) DEFAULT 0.06,
   default_room_rate NUMERIC(10,2) DEFAULT 70.00,
   default_pet_fee NUMERIC(10,2) DEFAULT 20.00,
+  weekly_30amp NUMERIC(10,2) DEFAULT 200.00,
+  weekly_50amp NUMERIC(10,2) DEFAULT 230.00,
+  monthly_30amp NUMERIC(10,2) DEFAULT 400.00,
+  monthly_50amp NUMERIC(10,2) DEFAULT 500.00,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Rate Plans
-CREATE TABLE IF NOT EXISTS rate_plans (
+CREATE TABLE rate_plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   description TEXT,
@@ -32,7 +50,7 @@ CREATE TABLE IF NOT EXISTS rate_plans (
 );
 
 -- Rooms (101-212)
-CREATE TABLE IF NOT EXISTS rooms (
+CREATE TABLE rooms (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   number TEXT UNIQUE NOT NULL,
   floor INTEGER DEFAULT 1,
@@ -43,19 +61,19 @@ CREATE TABLE IF NOT EXISTS rooms (
 );
 
 -- RV Sites (1-15)
-CREATE TABLE IF NOT EXISTS rv_sites (
+CREATE TABLE rv_sites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   site_number TEXT UNIQUE NOT NULL,
   amp_type TEXT DEFAULT '30amp' CHECK (amp_type IN ('30amp', '50amp')),
   base_price NUMERIC(10,2) DEFAULT 50.00,
-  weekly_price NUMERIC(10,2),
-  monthly_price NUMERIC(10,2),
+  weekly_price NUMERIC(10,2) DEFAULT 200.00,
+  monthly_price NUMERIC(10,2) DEFAULT 400.00,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Customers
-CREATE TABLE IF NOT EXISTS customers (
+CREATE TABLE customers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   phone TEXT,
@@ -65,13 +83,13 @@ CREATE TABLE IF NOT EXISTS customers (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Daily Entries (unified for guest rooms and RV)
-CREATE TABLE IF NOT EXISTS entries (
+-- Entries (using room_number and site_number as text for simplicity)
+CREATE TABLE entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   entry_type TEXT NOT NULL CHECK (entry_type IN ('guest', 'rv')),
   date DATE NOT NULL,
-  room_id UUID REFERENCES rooms(id),
-  site_id UUID REFERENCES rv_sites(id),
+  room_number TEXT,
+  site_number TEXT,
   customer_id UUID REFERENCES customers(id),
   customer_name TEXT,
   rate_plan_id UUID REFERENCES rate_plans(id),
@@ -96,17 +114,8 @@ CREATE TABLE IF NOT EXISTS entries (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Extra Charges (for reference/reports)
-CREATE TABLE IF NOT EXISTS extra_charges (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entry_id UUID REFERENCES entries(id) ON DELETE CASCADE,
-  description TEXT NOT NULL,
-  amount NUMERIC(10,2) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
 -- Housekeeping Tasks
-CREATE TABLE IF NOT EXISTS housekeeping_tasks (
+CREATE TABLE housekeeping_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   date DATE NOT NULL,
   room_id UUID REFERENCES rooms(id),
@@ -118,8 +127,8 @@ CREATE TABLE IF NOT EXISTS housekeeping_tasks (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Roles (customizable)
-CREATE TABLE IF NOT EXISTS roles (
+-- Roles
+CREATE TABLE roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT UNIQUE NOT NULL,
   permissions JSONB DEFAULT '[]',
@@ -128,19 +137,18 @@ CREATE TABLE IF NOT EXISTS roles (
 );
 
 -- Users
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   full_name TEXT,
-  photo_url TEXT,
-  role_id UUID REFERENCES roles(id),
+  role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'manager', 'staff')),
   active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Audit Log
-CREATE TABLE IF NOT EXISTS audit_log (
+CREATE TABLE audit_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id),
   username TEXT,
@@ -153,7 +161,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 
 -- Backup Records
-CREATE TABLE IF NOT EXISTS backup_records (
+CREATE TABLE backup_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   year INTEGER NOT NULL,
   month INTEGER,
@@ -165,74 +173,95 @@ CREATE TABLE IF NOT EXISTS backup_records (
 );
 
 -- Indexes
-CREATE INDEX IF NOT EXISTS idx_entries_date ON entries(date);
-CREATE INDEX IF NOT EXISTS idx_entries_type ON entries(entry_type);
-CREATE INDEX IF NOT EXISTS idx_entries_room ON entries(room_id);
-CREATE INDEX IF NOT EXISTS idx_entries_site ON entries(site_id);
-CREATE INDEX IF NOT EXISTS idx_entries_customer ON entries(customer_id);
-CREATE INDEX IF NOT EXISTS idx_housekeeping_date ON housekeeping_tasks(date);
-CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_id);
-CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
+CREATE INDEX idx_entries_date ON entries(date);
+CREATE INDEX idx_entries_type ON entries(entry_type);
+CREATE INDEX idx_entries_room ON entries(room_number);
+CREATE INDEX idx_entries_site ON entries(site_number);
+CREATE INDEX idx_entries_customer ON entries(customer_id);
+CREATE INDEX idx_housekeeping_date ON housekeeping_tasks(date);
+CREATE INDEX idx_audit_log_user ON audit_log(user_id);
+CREATE INDEX idx_audit_log_created ON audit_log(created_at);
 
--- Disable RLS (using app-level auth)
+-- Disable RLS
 ALTER TABLE property_settings FORCE ROW LEVEL SECURITY;
 ALTER TABLE rate_plans FORCE ROW LEVEL SECURITY;
 ALTER TABLE rooms FORCE ROW LEVEL SECURITY;
 ALTER TABLE rv_sites FORCE ROW LEVEL SECURITY;
 ALTER TABLE customers FORCE ROW LEVEL SECURITY;
 ALTER TABLE entries FORCE ROW LEVEL SECURITY;
-ALTER TABLE extra_charges FORCE ROW LEVEL SECURITY;
 ALTER TABLE housekeeping_tasks FORCE ROW LEVEL SECURITY;
 ALTER TABLE roles FORCE ROW LEVEL SECURITY;
 ALTER TABLE users FORCE ROW LEVEL SECURITY;
 ALTER TABLE audit_log FORCE ROW LEVEL SECURITY;
 ALTER TABLE backup_records FORCE ROW LEVEL SECURITY;
 
--- Insert default rate plan
-INSERT INTO rate_plans (name, description, base_rate, tax_c_rate, tax_s_rate)
-VALUES ('Standard', 'Standard room rate with tax', 70.00, 0.07, 0.06)
-ON CONFLICT DO NOTHING;
-
 -- Insert default property settings
 INSERT INTO property_settings (name, city_tax_rate, state_tax_rate, default_room_rate, default_pet_fee)
 VALUES ('American Inn and RV Park', 0.07, 0.06, 70.00, 20.00)
 ON CONFLICT DO NOTHING;
 
--- Insert default role (admin)
+-- Insert default rate plan
+INSERT INTO rate_plans (name, description, base_rate, tax_c_rate, tax_s_rate)
+VALUES ('Standard', 'Standard room rate with tax', 70.00, 0.07, 0.06)
+ON CONFLICT DO NOTHING;
+
+-- Insert default role
 INSERT INTO roles (name, permissions)
 VALUES ('Admin', '["all"]')
 ON CONFLICT DO NOTHING;
 
 -- Insert admin user (password: admin123)
-INSERT INTO users (username, password_hash, full_name, role_id)
-SELECT 'admin', 'admin123', 'Administrator', id FROM roles WHERE name = 'Admin'
+INSERT INTO users (username, password_hash, full_name, role)
+VALUES ('admin', 'admin123', 'Administrator', 'admin')
 ON CONFLICT (username) DO NOTHING;
 
--- Insert rooms 101-112 and 201-212
-DO $$
-DECLARE
-  i INTEGER;
-BEGIN
-  FOR i IN 101..112 LOOP
-    INSERT INTO rooms (number, floor, type, base_price)
-    VALUES (i::TEXT, 1, CASE WHEN i >= 201 THEN 2 ELSE 1 END, 70.00)
-    ON CONFLICT (number) DO NOTHING;
-  END LOOP;
-  FOR i IN 201..212 LOOP
-    INSERT INTO rooms (number, floor, type, base_price)
-    VALUES (i::TEXT, 2, CASE WHEN MOD(i, 2) = 0 THEN 'double' ELSE 'single' END, 70.00)
-    ON CONFLICT (number) DO NOTHING;
-  END LOOP;
-END $$;
+-- Insert rooms 101-112
+INSERT INTO rooms (number, floor, type, base_price) VALUES
+('101', 1, 'single', 70.00),
+('102', 1, 'single', 70.00),
+('103', 1, 'single', 70.00),
+('104', 1, 'single', 70.00),
+('105', 1, 'single', 70.00),
+('106', 1, 'single', 70.00),
+('107', 1, 'single', 70.00),
+('108', 1, 'single', 70.00),
+('109', 1, 'single', 70.00),
+('110', 1, 'single', 70.00),
+('111', 1, 'single', 70.00),
+('112', 1, 'single', 70.00)
+ON CONFLICT (number) DO NOTHING;
+
+-- Insert rooms 201-212
+INSERT INTO rooms (number, floor, type, base_price) VALUES
+('201', 2, 'single', 70.00),
+('202', 2, 'double', 70.00),
+('203', 2, 'single', 70.00),
+('204', 2, 'double', 70.00),
+('205', 2, 'single', 70.00),
+('206', 2, 'double', 70.00),
+('207', 2, 'single', 70.00),
+('208', 2, 'double', 70.00),
+('209', 2, 'single', 70.00),
+('210', 2, 'double', 70.00),
+('211', 2, 'single', 70.00),
+('212', 2, 'double', 70.00)
+ON CONFLICT (number) DO NOTHING;
 
 -- Insert RV sites 1-15
-DO $$
-DECLARE
-  i INTEGER;
-BEGIN
-  FOR i IN 1..15 LOOP
-    INSERT INTO rv_sites (site_number, amp_type, base_price, weekly_price, monthly_price)
-    VALUES (i::TEXT, CASE WHEN i <= 10 THEN '30amp' ELSE '50amp' END, 50.00, 300.00, 1000.00)
-    ON CONFLICT (site_number) DO NOTHING;
-  END LOOP;
-END $$;
+INSERT INTO rv_sites (site_number, amp_type, base_price, weekly_price, monthly_price) VALUES
+('1', '30amp', 50.00, 200.00, 400.00),
+('2', '30amp', 50.00, 200.00, 400.00),
+('3', '30amp', 50.00, 200.00, 400.00),
+('4', '30amp', 50.00, 200.00, 400.00),
+('5', '30amp', 50.00, 200.00, 400.00),
+('6', '30amp', 50.00, 200.00, 400.00),
+('7', '30amp', 50.00, 200.00, 400.00),
+('8', '30amp', 50.00, 200.00, 400.00),
+('9', '30amp', 50.00, 200.00, 400.00),
+('10', '30amp', 50.00, 200.00, 400.00),
+('11', '50amp', 50.00, 230.00, 500.00),
+('12', '50amp', 50.00, 230.00, 500.00),
+('13', '50amp', 50.00, 230.00, 500.00),
+('14', '50amp', 50.00, 230.00, 500.00),
+('15', '50amp', 50.00, 230.00, 500.00)
+ON CONFLICT (site_number) DO NOTHING;

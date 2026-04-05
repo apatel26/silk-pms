@@ -12,8 +12,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const {
       entry_type,
       date,
-      room_id,
-      site_id,
+      room_number,
+      site_number,
       customer_name,
       rate_plan_id,
       check_in,
@@ -53,8 +53,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const updateData: any = {
       entry_type,
       date,
-      room_id: room_id || null,
-      site_id: site_id || null,
+      room_number: room_number || null,
+      site_number: site_number || null,
       customer_name: customer_name || null,
       rate_plan_id: rate_plan_id || null,
       check_in: check_in || null,

@@ -13,8 +13,8 @@ interface Entry {
   id: string;
   entry_type: 'guest' | 'rv';
   date: string;
-  room_id: string | null;
-  site_id: string | null;
+  room_number: string | null;
+  site_number: string | null;
   customer_name: string;
   rate_plan_id: string | null;
   check_in: string | null;
@@ -58,17 +58,8 @@ export default function ReportsPage() {
     }
   };
 
-  const getRoomNumber = (roomId: string | null) => {
-    if (!roomId) return null;
-    const match = roomId.match(/(\d+)$/);
-    return match ? parseInt(match[1]) : null;
-  };
 
-  const getSiteNumber = (siteId: string | null) => {
-    if (!siteId) return null;
-    const match = siteId.match(/(\d+)$/);
-    return match ? parseInt(match[1]) : null;
-  };
+
 
   const getMonthlySummary = () => {
     const guestEntries = entries.filter((e) => e.entry_type === 'guest' && e.status === 'active');
@@ -121,7 +112,7 @@ export default function ReportsPage() {
 
         // For each room, check if there's an entry
         GUEST_ROOMS.forEach((roomNum) => {
-          const entry = dayEntries.find((e) => e.entry_type === 'guest' && getRoomNumber(e.room_id) === roomNum);
+          const entry = dayEntries.find((e) => e.entry_type === 'guest' && e.room_number === String(roomNum));
 
           if (entry) {
             dailyData.push([
@@ -209,7 +200,7 @@ export default function ReportsPage() {
 
       const guestRows = GUEST_ROOMS.map((roomNum) => {
         const roomEntries = entries.filter(
-          (e) => e.entry_type === 'guest' && getRoomNumber(e.room_id) === roomNum && e.status === 'active'
+          (e) => e.entry_type === 'guest' && e.room_number === String(roomNum) && e.status === 'active'
         );
         const totalRate = roomEntries.reduce((sum, e) => sum + e.room_rate, 0);
         const totalCash = roomEntries.reduce((sum, e) => sum + (e.cash || 0), 0);
@@ -233,7 +224,7 @@ export default function ReportsPage() {
 
       const rvRows = RV_SITES.map((siteNum) => {
         const siteEntries = entries.filter(
-          (e) => e.entry_type === 'rv' && getSiteNumber(e.site_id) === siteNum && e.status === 'active'
+          (e) => e.entry_type === 'rv' && e.site_number === String(siteNum) && e.status === 'active'
         );
         const totalRate = siteEntries.reduce((sum, e) => sum + e.room_rate, 0);
         return [`RV # ${siteNum}`, siteEntries.length, `$${totalRate.toFixed(2)}`];

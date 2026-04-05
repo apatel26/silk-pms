@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { hashPassword } from '@/lib/password';
 
 const AUTH_COOKIE_NAME = 'pms_session';
 
@@ -40,7 +41,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     const updateData: any = {};
     if (body.username) updateData.username = body.username;
-    if (body.password) updateData.password_hash = body.password;
+    if (body.password) updateData.password_hash = hashPassword(body.password);
     if (body.full_name !== undefined) updateData.full_name = body.full_name;
     if (body.role) {
       if (!['admin', 'manager', 'staff'].includes(body.role)) {
