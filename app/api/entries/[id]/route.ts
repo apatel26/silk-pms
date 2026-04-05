@@ -1,13 +1,51 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
+import { cookies } from 'next/headers';
+
+export const dynamic = 'force-dynamic';
+
+const AUTH_COOKIE_NAME = 'pms_session';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+function decodeSession(token: string): any {
+  try {
+    return JSON.parse(Buffer.from(token, 'base64').toString());
+  } catch {
+    return null;
+  }
+}
+
+async function getCurrentUser() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
+  if (!sessionCookie?.value) return null;
+  return decodeSession(sessionCookie.value);
+}
+
+// Helper to get tax rates from settings
+async function getTaxRates() {
+  const supabase = createServerClient();
+  const { data } = await supabase
+    .from('property_settings')
+    .select('city_tax_rate, state_tax_rate')
+    .limit(1)
+    .single();
+  return {
+    cityTaxRate: data?.city_tax_rate || 0.07,
+    stateTaxRate: data?.state_tax_rate || 0.06,
+  };
+}
+
+// PUT /api/entries/[id] - Update entry
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
     const body = await request.json();
     const supabase = createServerClient();
+
+    // Get tax rates from settings
+    const { cityTaxRate, stateTaxRate } = await getTaxRates();
 
     const {
       entry_type,
@@ -31,13 +69,14 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     let tax_c = 0;
     let tax_s = 0;
-    let subtotal = room_rate || 0;
-    let total = room_rate || 0;
+    const finalRoomRate = room_rate || 0;
+    let subtotal = finalRoomRate;
+    let total = finalRoomRate;
 
-    if (entry_type === 'guest' && room_rate) {
-      tax_c = room_rate * 0.07;
-      tax_s = room_rate * 0.06;
-      subtotal = room_rate + tax_c + tax_s;
+    if (entry_type === 'guest' && finalRoomRate) {
+      tax_c = finalRoomRate * cityTaxRate;
+      tax_s = finalRoomRate * stateTaxRate;
+      subtotal = finalRoomRate + tax_c + tax_s;
     }
 
     if (pet_fee && pet_fee > 0) {
@@ -59,7 +98,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       rate_plan_id: rate_plan_id || null,
       check_in: check_in || null,
       check_out: check_out || null,
-      room_rate: room_rate || 0,
+      room_rate: finalRoomRate,
       tax_c,
       tax_s,
       pet_fee: pet_fee || 0,
@@ -92,6 +131,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   }
 }
 
+// DELETE /api/entries/[id] - Delete entry
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
