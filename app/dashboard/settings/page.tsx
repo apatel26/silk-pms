@@ -1,29 +1,116 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+interface Settings {
+  name: string;
+  address: string;
+  phone: string;
+  city_tax_rate: number;
+  state_tax_rate: number;
+  default_room_rate: number;
+  default_pet_fee: number;
+  weekly_30amp: number;
+  weekly_50amp: number;
+  monthly_30amp: number;
+  monthly_50amp: number;
+}
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState({
-    propertyName: 'American Inn and RV Park',
+  const [settings, setSettings] = useState<Settings>({
+    name: 'American Inn and RV Park',
     address: '',
     phone: '',
-    cityTaxRate: 7,
-    stateTaxRate: 6,
-    defaultRoomRate: 70,
-    defaultPetFee: 20,
-    weekly30Amp: 200,
-    weekly50Amp: 230,
-    monthly30Amp: 400,
-    monthly50Amp: 500,
+    city_tax_rate: 7,
+    state_tax_rate: 6,
+    default_room_rate: 70,
+    default_pet_fee: 20,
+    weekly_30amp: 200,
+    weekly_50amp: 230,
+    monthly_30amp: 400,
+    monthly_50amp: 500,
   });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setSettings({
+          name: data.name || 'American Inn and RV Park',
+          address: data.address || '',
+          phone: data.phone || '',
+          city_tax_rate: (data.city_tax_rate || 0.07) * 100,
+          state_tax_rate: (data.state_tax_rate || 0.06) * 100,
+          default_room_rate: data.default_room_rate || 70,
+          default_pet_fee: data.default_pet_fee || 20,
+          weekly_30amp: data.weekly_30amp || 200,
+          weekly_50amp: data.weekly_50amp || 230,
+          monthly_30amp: data.monthly_30amp || 400,
+          monthly_50amp: data.monthly_50amp || 500,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (field: string, value: string | number) => {
     setSettings({ ...settings, [field]: value });
   };
 
-  const handleSave = () => {
-    alert('Settings saved successfully!');
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        name: settings.name,
+        address: settings.address,
+        phone: settings.phone,
+        city_tax_rate: settings.city_tax_rate / 100,
+        state_tax_rate: settings.state_tax_rate / 100,
+        default_room_rate: settings.default_room_rate,
+        default_pet_fee: settings.default_pet_fee,
+        weekly_30amp: settings.weekly_30amp,
+        weekly_50amp: settings.weekly_50amp,
+        monthly_30amp: settings.monthly_30amp,
+        monthly_50amp: settings.monthly_50amp,
+      };
+
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        alert('Settings saved successfully!');
+      } else {
+        const err = await res.json();
+        alert('Error: ' + (err.error || 'Failed to save'));
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Error saving settings');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-slate-400">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -40,8 +127,8 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-slate-300 mb-2">Property Name</label>
             <input
               type="text"
-              value={settings.propertyName}
-              onChange={(e) => handleChange('propertyName', e.target.value)}
+              value={settings.name}
+              onChange={(e) => handleChange('name', e.target.value)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -92,8 +179,8 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-slate-300 mb-2">City Tax (%)</label>
             <input
               type="number"
-              value={settings.cityTaxRate}
-              onChange={(e) => handleChange('cityTaxRate', parseFloat(e.target.value) || 0)}
+              value={settings.city_tax_rate}
+              onChange={(e) => handleChange('city_tax_rate', parseFloat(e.target.value) || 0)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -101,8 +188,8 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-slate-300 mb-2">State Tax (%)</label>
             <input
               type="number"
-              value={settings.stateTaxRate}
-              onChange={(e) => handleChange('stateTaxRate', parseFloat(e.target.value) || 0)}
+              value={settings.state_tax_rate}
+              onChange={(e) => handleChange('state_tax_rate', parseFloat(e.target.value) || 0)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -117,8 +204,8 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-slate-300 mb-2">Standard Room Rate ($)</label>
             <input
               type="number"
-              value={settings.defaultRoomRate}
-              onChange={(e) => handleChange('defaultRoomRate', parseFloat(e.target.value) || 0)}
+              value={settings.default_room_rate}
+              onChange={(e) => handleChange('default_room_rate', parseFloat(e.target.value) || 0)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -126,8 +213,8 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-slate-300 mb-2">Default Pet Fee ($/night)</label>
             <input
               type="number"
-              value={settings.defaultPetFee}
-              onChange={(e) => handleChange('defaultPetFee', parseFloat(e.target.value) || 0)}
+              value={settings.default_pet_fee}
+              onChange={(e) => handleChange('default_pet_fee', parseFloat(e.target.value) || 0)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -142,8 +229,8 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-slate-300 mb-2">Weekly 30 AMP ($)</label>
             <input
               type="number"
-              value={settings.weekly30Amp}
-              onChange={(e) => handleChange('weekly30Amp', parseFloat(e.target.value) || 0)}
+              value={settings.weekly_30amp}
+              onChange={(e) => handleChange('weekly_30amp', parseFloat(e.target.value) || 0)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -151,8 +238,8 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-slate-300 mb-2">Weekly 50 AMP ($)</label>
             <input
               type="number"
-              value={settings.weekly50Amp}
-              onChange={(e) => handleChange('weekly50Amp', parseFloat(e.target.value) || 0)}
+              value={settings.weekly_50amp}
+              onChange={(e) => handleChange('weekly_50amp', parseFloat(e.target.value) || 0)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -160,8 +247,8 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-slate-300 mb-2">Monthly 30 AMP ($)</label>
             <input
               type="number"
-              value={settings.monthly30Amp}
-              onChange={(e) => handleChange('monthly30Amp', parseFloat(e.target.value) || 0)}
+              value={settings.monthly_30amp}
+              onChange={(e) => handleChange('monthly_30amp', parseFloat(e.target.value) || 0)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -169,8 +256,8 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-slate-300 mb-2">Monthly 50 AMP ($)</label>
             <input
               type="number"
-              value={settings.monthly50Amp}
-              onChange={(e) => handleChange('monthly50Amp', parseFloat(e.target.value) || 0)}
+              value={settings.monthly_50amp}
+              onChange={(e) => handleChange('monthly_50amp', parseFloat(e.target.value) || 0)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -181,9 +268,10 @@ export default function SettingsPage() {
       <div className="flex justify-end">
         <button
           onClick={handleSave}
-          className="px-6 py-3 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-semibold hover:from-amber-400 hover:to-amber-500 transition"
+          disabled={saving}
+          className="px-6 py-3 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-semibold hover:from-amber-400 hover:to-amber-500 transition disabled:opacity-50"
         >
-          Save Settings
+          {saving ? 'Saving...' : 'Save Settings'}
         </button>
       </div>
     </div>
