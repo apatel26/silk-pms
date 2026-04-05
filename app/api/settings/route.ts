@@ -105,11 +105,14 @@ export async function PUT(request: Request) {
       result = { data, error };
     }
 
-    if (result.error) throw result.error;
+    if (result.error) {
+      console.error('Settings save error:', result.error);
+      throw result.error;
+    }
 
     return NextResponse.json(result.data);
   } catch (error) {
     console.error('Error saving settings:', error);
-    return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
