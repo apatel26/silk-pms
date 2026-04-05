@@ -52,6 +52,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
     const month = searchParams.get('month');
+    const forHousekeeping = searchParams.get('housekeeping');
+    const checkoutDate = searchParams.get('checkout_date');
 
     const supabase = createServerClient();
 
@@ -60,7 +62,19 @@ export async function GET(request: Request) {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (date) {
+    if (checkoutDate) {
+      // For housekeeping auto: get entries checking out on this date
+      query = query
+        .eq('status', 'active')
+        .eq('check_out', checkoutDate);
+    } else if (forHousekeeping === 'true' && date) {
+      // For housekeeping: get entries where guest is staying on this date
+      // check_in <= date AND check_out > date AND status is active
+      query = query
+        .eq('status', 'active')
+        .lte('check_in', date)
+        .gt('check_out', date);
+    } else if (date) {
       query = query.eq('date', date);
     } else if (month) {
       query = query.like('date', `${month}%`);
@@ -106,20 +120,36 @@ export async function POST(request: Request) {
       status,
     } = body;
 
+    // Calculate number of nights from check_in/check_out
+    let numNights = 1;
+    if (check_in && check_out) {
+      const checkInDate = new Date(check_in);
+      const checkOutDate = new Date(check_out);
+      const diffTime = checkOutDate.getTime() - checkInDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > 0) numNights = diffDays;
+    }
+    // Allow override from body.num_nights if provided
+    if (body.num_nights && body.num_nights > 0) {
+      numNights = body.num_nights;
+    }
+
     // Calculate taxes using settings
     let tax_c = 0;
     let tax_s = 0;
     const finalRoomRate = room_rate || await getDefaultRoomRate();
-    let subtotal = finalRoomRate;
-    let total = finalRoomRate;
+    // Subtotal and total are for ALL nights
+    const subtotalForNights = finalRoomRate * numNights;
+    let subtotal = subtotalForNights;
+    let total = subtotalForNights;
 
     if (entry_type === 'guest' && finalRoomRate) {
-      tax_c = Math.round(finalRoomRate * cityTaxRate * 100) / 100;
-      tax_s = Math.round(finalRoomRate * stateTaxRate * 100) / 100;
-      subtotal = Math.round((finalRoomRate + tax_c + tax_s) * 100) / 100;
+      tax_c = Math.round(subtotalForNights * cityTaxRate * 100) / 100;
+      tax_s = Math.round(subtotalForNights * stateTaxRate * 100) / 100;
+      subtotal = Math.round((subtotalForNights + tax_c + tax_s) * 100) / 100;
     }
 
-    // Add pet fees
+    // Add pet fees (already multiplied by nights in frontend)
     if (pet_fee && pet_fee > 0) {
       total = subtotal + pet_fee;
     } else {
@@ -141,12 +171,13 @@ export async function POST(request: Request) {
       check_in: check_in || null,
       check_out: check_out || null,
       room_rate: finalRoomRate,
+      num_nights: numNights,
+      subtotal,
       tax_c,
       tax_s,
       pet_fee: pet_fee || 0,
       pet_count: pet_count || 0,
       extra_charges: extra_charges || [],
-      subtotal,
       total,
       cash: cash || null,
       cc: cc || null,
@@ -154,6 +185,8 @@ export async function POST(request: Request) {
       is_refund: is_refund || false,
       refund_amount: is_refund ? Math.abs(body.refund_amount || 0) : 0,
       status: status || 'active',
+      group_id: body.group_id || null,
+      is_group_main: body.is_group_main || false,
     };
 
     const { data, error } = await supabase

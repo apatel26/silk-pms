@@ -65,18 +65,32 @@ export async function PUT(request: Request, { params }: RouteParams) {
       note,
       is_refund,
       status,
+      num_nights,
+      group_id,
+      is_group_main,
     } = body;
+
+    // Calculate number of nights
+    let numNights = num_nights || 1;
+    if (check_in && check_out && !num_nights) {
+      const checkInDate = new Date(check_in);
+      const checkOutDate = new Date(check_out);
+      const diffTime = checkOutDate.getTime() - checkInDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > 0) numNights = diffDays;
+    }
 
     let tax_c = 0;
     let tax_s = 0;
     const finalRoomRate = room_rate || 0;
-    let subtotal = finalRoomRate;
-    let total = finalRoomRate;
+    const subtotalForNights = finalRoomRate * numNights;
+    let subtotal = subtotalForNights;
+    let total = subtotalForNights;
 
     if (entry_type === 'guest' && finalRoomRate) {
-      tax_c = Math.round(finalRoomRate * cityTaxRate * 100) / 100;
-      tax_s = Math.round(finalRoomRate * stateTaxRate * 100) / 100;
-      subtotal = Math.round((finalRoomRate + tax_c + tax_s) * 100) / 100;
+      tax_c = Math.round(subtotalForNights * cityTaxRate * 100) / 100;
+      tax_s = Math.round(subtotalForNights * stateTaxRate * 100) / 100;
+      subtotal = Math.round((subtotalForNights + tax_c + tax_s) * 100) / 100;
     }
 
     if (pet_fee && pet_fee > 0) {
@@ -99,12 +113,13 @@ export async function PUT(request: Request, { params }: RouteParams) {
       check_in: check_in || null,
       check_out: check_out || null,
       room_rate: finalRoomRate,
+      num_nights: numNights,
+      subtotal,
       tax_c,
       tax_s,
       pet_fee: pet_fee || 0,
       pet_count: pet_count || 0,
       extra_charges: extra_charges || [],
-      subtotal,
       total,
       cash: cash || null,
       cc: cc || null,
@@ -112,6 +127,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
       is_refund: is_refund || false,
       refund_amount: is_refund ? Math.abs(body.refund_amount || 0) : 0,
       status: status || 'active',
+      group_id: group_id || null,
+      is_group_main: is_group_main || false,
       updated_at: new Date().toISOString(),
     };
 

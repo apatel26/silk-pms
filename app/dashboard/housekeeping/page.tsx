@@ -33,7 +33,7 @@ export default function HousekeepingPage() {
     try {
       const [tasksRes, entriesRes] = await Promise.all([
         fetch(`/api/housekeeping?date=${selectedDate}`),
-        fetch(`/api/entries?date=${selectedDate}`)
+        fetch(`/api/entries?date=${selectedDate}&housekeeping=true`)
       ]);
 
       if (tasksRes.ok) {
@@ -112,9 +112,16 @@ export default function HousekeepingPage() {
     }
   };
 
-  // Generate tasks for rooms that need cleaning
+  // Generate tasks for rooms that need cleaning (checkouts for selected date)
   const handleGenerateFromEntries = async () => {
-    const rooms = getRoomsNeedingCleaning();
+    // Fetch fresh entries checking out today
+    const res = await fetch(`/api/entries?checkout_date=${selectedDate}`);
+    let checkoutEntries: Entry[] = [];
+    if (res.ok) {
+      checkoutEntries = await res.json();
+    }
+    const rooms = Array.from(new Set(checkoutEntries.map(e => parseInt(e.room_number!)))).filter(r => !isNaN(r));
+
     let count = 0;
     for (const roomNum of rooms) {
       const existingTask = getTaskForRoom(roomNum);
