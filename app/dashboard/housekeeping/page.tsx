@@ -28,10 +28,6 @@ export default function HousekeepingPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchData();
-  }, [selectedDate]);
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -51,12 +47,14 @@ export default function HousekeepingPage() {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      setTasks([]);
-      setEntries([]);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, [selectedDate]);
 
   // Get rooms that need cleaning (active guests checking out today)
   const getRoomsNeedingCleaning = (): number[] => {
@@ -70,52 +68,42 @@ export default function HousekeepingPage() {
     return tasks.find(t => t.room_number === String(roomNum));
   };
 
-  const updateTaskStatus = async (roomNum: number, status: HousekeepingTask['status']) => {
-    const existingTask = getTaskForRoom(roomNum);
-
-    try {
-      if (existingTask) {
-        const res = await fetch('/api/housekeeping', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: existingTask.id, status }),
-        });
-
-        if (res.ok) {
-          const updated = await res.json();
-          setTasks(tasks.map(t => t.id === existingTask.id ? updated : t));
-        }
-      } else {
-        const res = await fetch('/api/housekeeping', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            date: selectedDate,
-            room_number: String(roomNum),
-            status,
-          }),
-        });
-
-        if (res.ok) {
-          const newTask = await res.json();
-          setTasks([...tasks, newTask]);
-        }
-      }
-    } catch (error) {
-      console.error('Error updating task:', error);
-    }
-  };
-
   // Single click = cycle status
-  const handleRoomClick = (roomNum: number) => {
+  const handleRoomClick = async (roomNum: number) => {
     const task = getTaskForRoom(roomNum);
     const currentStatus = task?.status || 'pending';
     const nextStatus: HousekeepingTask['status'] =
       currentStatus === 'pending' ? 'cleaned' :
       currentStatus === 'cleaned' ? 'skip' :
       currentStatus === 'skip' ? 'out_of_order' :
-      currentStatus === 'out_of_order' ? 'pending' : 'pending';
-    updateTaskStatus(roomNum, nextStatus);
+      'pending';
+
+    try {
+      let res;
+      if (task) {
+        res = await fetch('/api/housekeeping', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: task.id, status: nextStatus }),
+        });
+      } else {
+        res = await fetch('/api/housekeeping', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: selectedDate,
+            room_number: String(roomNum),
+            status: nextStatus,
+          }),
+        });
+      }
+
+      if (res.ok) {
+        fetchData(); // Refresh after update
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
   };
 
   // Generate tasks for rooms that need cleaning
@@ -124,10 +112,18 @@ export default function HousekeepingPage() {
     for (const roomNum of rooms) {
       const existingTask = getTaskForRoom(roomNum);
       if (!existingTask) {
-        await updateTaskStatus(roomNum, 'pending');
+        await fetch('/api/housekeeping', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: selectedDate,
+            room_number: String(roomNum),
+            status: 'pending',
+          }),
+        });
       }
     }
-    fetchData(); // Refresh
+    fetchData();
   };
 
   // Pending All
@@ -135,7 +131,15 @@ export default function HousekeepingPage() {
     for (const roomNum of GUEST_ROOMS) {
       const existingTask = getTaskForRoom(roomNum);
       if (!existingTask) {
-        await updateTaskStatus(roomNum, 'pending');
+        await fetch('/api/housekeeping', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: selectedDate,
+            room_number: String(roomNum),
+            status: 'pending',
+          }),
+        });
       }
     }
     fetchData();
@@ -146,7 +150,15 @@ export default function HousekeepingPage() {
     for (const roomNum of GUEST_ROOMS) {
       const existingTask = getTaskForRoom(roomNum);
       if (!existingTask) {
-        await updateTaskStatus(roomNum, 'skip');
+        await fetch('/api/housekeeping', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: selectedDate,
+            room_number: String(roomNum),
+            status: 'skip',
+          }),
+        });
       }
     }
     fetchData();
@@ -157,7 +169,15 @@ export default function HousekeepingPage() {
     for (const roomNum of GUEST_ROOMS) {
       const existingTask = getTaskForRoom(roomNum);
       if (!existingTask) {
-        await updateTaskStatus(roomNum, 'cleaned');
+        await fetch('/api/housekeeping', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: selectedDate,
+            room_number: String(roomNum),
+            status: 'cleaned',
+          }),
+        });
       }
     }
     fetchData();
@@ -170,7 +190,6 @@ export default function HousekeepingPage() {
   const roomsNeedingCleaning = getRoomsNeedingCleaning();
 
   const stats = {
-    total: GUEST_ROOMS.length,
     cleaned: tasks.filter(t => t.status === 'cleaned').length,
     pending: tasks.filter(t => t.status === 'pending').length,
     skipped: tasks.filter(t => t.status === 'skip').length,
@@ -179,9 +198,9 @@ export default function HousekeepingPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'cleaned': return 'bg-green-500/20 border-green-500/50';
-      case 'skip': return 'bg-yellow-500/20 border-yellow-500/50';
-      case 'out_of_order': return 'bg-red-500/20 border-red-500/50';
+      case 'cleaned': return 'bg-green-500/20 border-green-500';
+      case 'skip': return 'bg-yellow-500/20 border-yellow-500';
+      case 'out_of_order': return 'bg-red-500/20 border-red-500';
       default: return 'bg-slate-700/50 border-slate-600';
     }
   };
@@ -279,37 +298,41 @@ export default function HousekeepingPage() {
 
       {/* Room Grid */}
       <div className="bg-slate-900 rounded-xl p-6 border border-slate-800" id="printable-area">
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
-          {GUEST_ROOMS.map((roomNum) => {
-            const task = getTaskForRoom(roomNum);
-            const status = task?.status || 'pending';
-            const needsCleaning = roomsNeedingCleaning.includes(roomNum);
+        {loading ? (
+          <div className="text-center text-slate-400 py-8">Loading...</div>
+        ) : (
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
+            {GUEST_ROOMS.map((roomNum) => {
+              const task = getTaskForRoom(roomNum);
+              const status = task?.status || 'pending';
+              const needsCleaning = roomsNeedingCleaning.includes(roomNum);
 
-            return (
-              <button
-                key={roomNum}
-                onClick={() => handleRoomClick(roomNum)}
-                className={`
-                  relative p-3 rounded-xl border-2 transition-all aspect-square flex flex-col items-center justify-center cursor-pointer
-                  ${getStatusColor(status)}
-                `}
-              >
-                <span className={`text-lg font-bold ${status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : status === 'out_of_order' ? 'text-red-400' : 'text-white'}`}>
-                  {roomNum}
-                </span>
-                <span className={`text-xl ${status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : status === 'out_of_order' ? 'text-red-400' : 'text-slate-500'}`}>
-                  {getStatusIcon(status)}
-                </span>
-                {roomNum >= 201 && (
-                  <span className="absolute top-1 left-1 w-2 h-2 rounded-full bg-blue-500" />
-                )}
-                {needsCleaning && (
-                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" title="Needs cleaning" />
-                )}
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={roomNum}
+                  onClick={() => handleRoomClick(roomNum)}
+                  className={`
+                    relative p-3 rounded-xl border-2 transition-all aspect-square flex flex-col items-center justify-center cursor-pointer
+                    ${getStatusColor(status)}
+                  `}
+                >
+                  <span className={`text-lg font-bold ${status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : status === 'out_of_order' ? 'text-red-400' : 'text-white'}`}>
+                    {roomNum}
+                  </span>
+                  <span className={`text-xl ${status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : status === 'out_of_order' ? 'text-red-400' : 'text-slate-500'}`}>
+                    {getStatusIcon(status)}
+                  </span>
+                  {roomNum >= 201 && (
+                    <span className="absolute top-1 left-1 w-2 h-2 rounded-full bg-blue-500" />
+                  )}
+                  {needsCleaning && (
+                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" title="Guest checking out" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Print Header */}

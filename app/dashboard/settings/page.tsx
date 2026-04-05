@@ -32,7 +32,7 @@ export default function SettingsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -43,19 +43,22 @@ export default function SettingsPage() {
     try {
       const res = await fetch('/api/settings');
       if (!res.ok) {
-        const text = await res.text();
-        console.error('Settings fetch error:', res.status, text);
+        console.error('Settings fetch error:', res.status);
         return;
       }
-      const text = await res.text();
-      if (!text) return;
-      const data = JSON.parse(text);
+      const data = await res.json();
+      if (!data) return;
+
+      // Convert tax rates from decimal (0.07) to percentage (7)
+      const cityTaxPercent = data.city_tax_rate != null ? Math.round(data.city_tax_rate * 100) : 7;
+      const stateTaxPercent = data.state_tax_rate != null ? Math.round(data.state_tax_rate * 100) : 6;
+
       setSettings({
         name: data.name || 'American Inn and RV Park',
         address: data.address || '',
         phone: data.phone || '',
-        city_tax_rate: Math.round((data.city_tax_rate || 0.07) * 100),
-        state_tax_rate: Math.round((data.state_tax_rate || 0.06) * 100),
+        city_tax_rate: cityTaxPercent,
+        state_tax_rate: stateTaxPercent,
         default_room_rate: data.default_room_rate || 70,
         default_pet_fee: data.default_pet_fee || 20,
         weekly_30amp: data.weekly_30amp || 200,
@@ -63,9 +66,7 @@ export default function SettingsPage() {
         monthly_30amp: data.monthly_30amp || 400,
         monthly_50amp: data.monthly_50amp || 500,
       });
-      if (data.logo_url) {
-        setLogoUrl(data.logo_url);
-      }
+      setLogoUrl(data.logo_url || '');
     } catch (error) {
       console.error('Error fetching settings:', error);
     } finally {
@@ -73,14 +74,14 @@ export default function SettingsPage() {
     }
   };
 
-  const handleChange = (field: string, value: string | number) => {
-    setSettings({ ...settings, [field]: value });
+  const handleChange = (field: keyof Settings, value: string | number) => {
+    setSettings(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Round tax rates to avoid floating point issues (7.00000001 -> 7)
+      // Round tax rates to avoid floating point issues
       const cityTax = Math.round(settings.city_tax_rate);
       const stateTax = Math.round(settings.state_tax_rate);
 
@@ -99,7 +100,8 @@ export default function SettingsPage() {
         logo_url: logoUrl,
       };
 
-      console.log('Saving settings:', payload);
+      console.log('Saving settings:', JSON.stringify(payload, null, 2));
+
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -107,15 +109,12 @@ export default function SettingsPage() {
         body: JSON.stringify(payload),
       });
 
-      console.log('Response status:', res.status);
-      const text = await res.text();
-      console.log('Response body:', text);
-
       if (res.ok) {
         alert('Settings saved successfully!');
-        fetchSettings(); // Reload settings after save
+        fetchSettings();
       } else {
-        alert('Error ' + res.status + ': ' + text);
+        const err = await res.text();
+        alert('Error: ' + err);
       }
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -125,11 +124,10 @@ export default function SettingsPage() {
     }
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type and size
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file');
       return;
@@ -139,53 +137,12 @@ export default function SettingsPage() {
       return;
     }
 
-    // Convert to base64
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
       setLogoUrl(base64);
-      // Auto-save the logo
-      handleSaveWithLogo(base64);
     };
     reader.readAsDataURL(file);
-  };
-
-  const handleSaveWithLogo = async (base64Logo: string) => {
-    setSaving(true);
-    try {
-      const cityTax = Math.round(settings.city_tax_rate);
-      const stateTax = Math.round(settings.state_tax_rate);
-
-      const payload = {
-        name: settings.name,
-        address: settings.address,
-        phone: settings.phone,
-        city_tax_rate: cityTax / 100,
-        state_tax_rate: stateTax / 100,
-        default_room_rate: settings.default_room_rate,
-        default_pet_fee: settings.default_pet_fee,
-        weekly_30amp: settings.weekly_30amp,
-        weekly_50amp: settings.weekly_50amp,
-        monthly_30amp: settings.monthly_30amp,
-        monthly_50amp: settings.monthly_50amp,
-        logo_url: base64Logo,
-      };
-
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        console.log('Logo saved successfully');
-      }
-    } catch (error) {
-      console.error('Error saving logo:', error);
-    } finally {
-      setSaving(false);
-    }
   };
 
   if (loading) {
@@ -245,7 +202,7 @@ export default function SettingsPage() {
         <div className="flex items-center gap-6">
           <div className="w-24 h-24 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center overflow-hidden">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
             ) : (
               <span className="text-2xl font-bold text-slate-900">AI</span>
             )}
@@ -265,18 +222,29 @@ export default function SettingsPage() {
               {saving ? 'Uploading...' : 'Upload Logo'}
             </button>
             <p className="text-xs text-slate-500 mt-2">PNG, JPG up to 2MB</p>
+            {logoUrl && (
+              <button
+                onClick={() => setLogoUrl('')}
+                className="block mt-2 text-xs text-red-400 hover:text-red-300"
+              >
+                Remove logo
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Tax Rates */}
       <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-        <h3 className="text-lg font-semibold text-white mb-4">Tax Rates</h3>
+        <h3 className="text-lg font-semibold text-white mb-4">Tax Rates (%)</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">City Tax (%)</label>
             <input
               type="number"
+              step="0.1"
+              min="0"
+              max="100"
               value={settings.city_tax_rate}
               onChange={(e) => handleChange('city_tax_rate', parseFloat(e.target.value) || 0)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -286,6 +254,9 @@ export default function SettingsPage() {
             <label className="block text-sm font-medium text-slate-300 mb-2">State Tax (%)</label>
             <input
               type="number"
+              step="0.1"
+              min="0"
+              max="100"
               value={settings.state_tax_rate}
               onChange={(e) => handleChange('state_tax_rate', parseFloat(e.target.value) || 0)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
