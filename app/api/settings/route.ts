@@ -93,6 +93,7 @@ export async function POST(request: Request) {
       weekly_50amp: parseFloat(body.weekly_50amp) || 230.00,
       monthly_30amp: parseFloat(body.monthly_30amp) || 400.00,
       monthly_50amp: parseFloat(body.monthly_50amp) || 500.00,
+      logo_url: body.logo_url || null,
       updated_at: new Date().toISOString(),
     };
 

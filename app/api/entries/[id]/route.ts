@@ -74,9 +74,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
     let total = finalRoomRate;
 
     if (entry_type === 'guest' && finalRoomRate) {
-      tax_c = finalRoomRate * cityTaxRate;
-      tax_s = finalRoomRate * stateTaxRate;
-      subtotal = finalRoomRate + tax_c + tax_s;
+      tax_c = Math.round(finalRoomRate * cityTaxRate * 100) / 100;
+      tax_s = Math.round(finalRoomRate * stateTaxRate * 100) / 100;
+      subtotal = Math.round((finalRoomRate + tax_c + tax_s) * 100) / 100;
     }
 
     if (pet_fee && pet_fee > 0) {

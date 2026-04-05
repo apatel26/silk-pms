@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Settings {
   name: string;
@@ -32,6 +32,8 @@ export default function SettingsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -52,8 +54,8 @@ export default function SettingsPage() {
         name: data.name || 'American Inn and RV Park',
         address: data.address || '',
         phone: data.phone || '',
-        city_tax_rate: (data.city_tax_rate || 0.07) * 100,
-        state_tax_rate: (data.state_tax_rate || 0.06) * 100,
+        city_tax_rate: Math.round((data.city_tax_rate || 0.07) * 100),
+        state_tax_rate: Math.round((data.state_tax_rate || 0.06) * 100),
         default_room_rate: data.default_room_rate || 70,
         default_pet_fee: data.default_pet_fee || 20,
         weekly_30amp: data.weekly_30amp || 200,
@@ -61,6 +63,9 @@ export default function SettingsPage() {
         monthly_30amp: data.monthly_30amp || 400,
         monthly_50amp: data.monthly_50amp || 500,
       });
+      if (data.logo_url) {
+        setLogoUrl(data.logo_url);
+      }
     } catch (error) {
       console.error('Error fetching settings:', error);
     } finally {
@@ -75,18 +80,23 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Round tax rates to avoid floating point issues (7.00000001 -> 7)
+      const cityTax = Math.round(settings.city_tax_rate);
+      const stateTax = Math.round(settings.state_tax_rate);
+
       const payload = {
         name: settings.name,
         address: settings.address,
         phone: settings.phone,
-        city_tax_rate: settings.city_tax_rate / 100,
-        state_tax_rate: settings.state_tax_rate / 100,
+        city_tax_rate: cityTax / 100,
+        state_tax_rate: stateTax / 100,
         default_room_rate: settings.default_room_rate,
         default_pet_fee: settings.default_pet_fee,
         weekly_30amp: settings.weekly_30amp,
         weekly_50amp: settings.weekly_50amp,
         monthly_30amp: settings.monthly_30amp,
         monthly_50amp: settings.monthly_50amp,
+        logo_url: logoUrl,
       };
 
       console.log('Saving settings:', payload);
@@ -110,6 +120,69 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Error saving settings:', error);
       alert('Error: ' + String(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size must be under 2MB');
+      return;
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setLogoUrl(base64);
+      // Auto-save the logo
+      handleSaveWithLogo(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveWithLogo = async (base64Logo: string) => {
+    setSaving(true);
+    try {
+      const cityTax = Math.round(settings.city_tax_rate);
+      const stateTax = Math.round(settings.state_tax_rate);
+
+      const payload = {
+        name: settings.name,
+        address: settings.address,
+        phone: settings.phone,
+        city_tax_rate: cityTax / 100,
+        state_tax_rate: stateTax / 100,
+        default_room_rate: settings.default_room_rate,
+        default_pet_fee: settings.default_pet_fee,
+        weekly_30amp: settings.weekly_30amp,
+        weekly_50amp: settings.weekly_50amp,
+        monthly_30amp: settings.monthly_30amp,
+        monthly_50amp: settings.monthly_50amp,
+        logo_url: base64Logo,
+      };
+
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        console.log('Logo saved successfully');
+      }
+    } catch (error) {
+      console.error('Error saving logo:', error);
     } finally {
       setSaving(false);
     }
@@ -170,12 +243,26 @@ export default function SettingsPage() {
       <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
         <h3 className="text-lg font-semibold text-white mb-4">Logo</h3>
         <div className="flex items-center gap-6">
-          <div className="w-24 h-24 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-            <span className="text-2xl font-bold text-slate-900">AI</span>
+          <div className="w-24 h-24 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center overflow-hidden">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-2xl font-bold text-slate-900">AI</span>
+            )}
           </div>
           <div>
-            <button className="px-4 py-2 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition">
-              Upload Logo
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleLogoUpload}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition"
+            >
+              {saving ? 'Uploading...' : 'Upload Logo'}
             </button>
             <p className="text-xs text-slate-500 mt-2">PNG, JPG up to 2MB</p>
           </div>
