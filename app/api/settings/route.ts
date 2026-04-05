@@ -39,6 +39,7 @@ export async function GET() {
     const settings = data && data.length > 0 ? data[0] : null;
 
     return NextResponse.json(settings || {
+      id: null,
       name: 'American Inn and RV Park',
       address: '',
       phone: '',
@@ -57,7 +58,7 @@ export async function GET() {
   }
 }
 
-// POST /api/settings - Save property settings (using POST instead of PUT for simplicity)
+// POST /api/settings - Save property settings
 export async function POST(request: Request) {
   try {
     const currentUser = await getCurrentUser();
@@ -69,34 +70,65 @@ export async function POST(request: Request) {
     const body = await request.json();
     const supabase = createServerClient();
 
+    // First, get the existing settings row
+    const { data: existing, error: fetchError } = await supabase
+      .from('property_settings')
+      .select('id')
+      .limit(1);
+
+    if (fetchError) {
+      console.error('Fetch error:', fetchError);
+      return NextResponse.json({ error: 'Fetch error: ' + fetchError.message }, { status: 500 });
+    }
+
     const updateData = {
       name: body.name || 'American Inn and RV Park',
       address: body.address || '',
       phone: body.phone || '',
-      city_tax_rate: body.city_tax_rate || 0.07,
-      state_tax_rate: body.state_tax_rate || 0.06,
-      default_room_rate: body.default_room_rate || 70.00,
-      default_pet_fee: body.default_pet_fee || 20.00,
-      weekly_30amp: body.weekly_30amp || 200.00,
-      weekly_50amp: body.weekly_50amp || 230.00,
-      monthly_30amp: body.monthly_30amp || 400.00,
-      monthly_50amp: body.monthly_50amp || 500.00,
+      city_tax_rate: parseFloat(body.city_tax_rate) || 0.07,
+      state_tax_rate: parseFloat(body.state_tax_rate) || 0.06,
+      default_room_rate: parseFloat(body.default_room_rate) || 70.00,
+      default_pet_fee: parseFloat(body.default_pet_fee) || 20.00,
+      weekly_30amp: parseFloat(body.weekly_30amp) || 200.00,
+      weekly_50amp: parseFloat(body.weekly_50amp) || 230.00,
+      monthly_30amp: parseFloat(body.monthly_30amp) || 400.00,
+      monthly_50amp: parseFloat(body.monthly_50amp) || 500.00,
       updated_at: new Date().toISOString(),
     };
 
-    // Use upsert to insert or update
-    const { data, error } = await supabase
-      .from('property_settings')
-      .upsert(updateData, { onConflict: 'id' })
-      .select()
-      .single();
+    let result;
+    console.log('Existing row:', existing);
 
-    if (error) {
-      console.error('Save error:', error);
-      return NextResponse.json({ error: 'Save error: ' + error.message }, { status: 500 });
+    if (existing && existing.length > 0) {
+      console.log('Updating existing row with id:', existing[0].id);
+      // Update existing row by id
+      const { data, error } = await supabase
+        .from('property_settings')
+        .update(updateData)
+        .eq('id', existing[0].id)
+        .select()
+        .single();
+      console.log('Update result:', { data, error });
+      result = { data, error };
+    } else {
+      console.log('Inserting new row');
+      // No existing row, insert new one
+      const { data, error } = await supabase
+        .from('property_settings')
+        .insert([updateData])
+        .select()
+        .single();
+      console.log('Insert result:', { data, error });
+      result = { data, error };
     }
 
-    return NextResponse.json({ success: true, data });
+    if (result.error) {
+      console.error('Save error:', result.error);
+      return NextResponse.json({ error: 'Save error: ' + result.error.message, code: result.error.code }, { status: 500 });
+    }
+
+    console.log('Settings saved successfully:', result.data);
+    return NextResponse.json({ success: true, data: result.data });
   } catch (error) {
     console.error('Error saving settings:', error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
