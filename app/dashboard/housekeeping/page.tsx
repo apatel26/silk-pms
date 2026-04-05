@@ -78,9 +78,13 @@ export default function HousekeepingPage() {
       currentStatus === 'skip' ? 'out_of_order' :
       'pending';
 
+    console.log('Room clicked:', roomNum, 'Current:', currentStatus, 'Next:', nextStatus);
+    console.log('Task exists:', task);
+
     try {
       let res;
       if (task) {
+        console.log('Updating existing task:', task.id);
         res = await fetch('/api/housekeeping', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -88,6 +92,7 @@ export default function HousekeepingPage() {
           body: JSON.stringify({ id: task.id, status: nextStatus }),
         });
       } else {
+        console.log('Creating new task for room:', roomNum);
         res = await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -100,13 +105,20 @@ export default function HousekeepingPage() {
         });
       }
 
+      console.log('Response status:', res.status);
+      const responseText = await res.text();
+      console.log('Response:', responseText);
+
       if (res.ok) {
+        console.log('Success, refreshing data...');
         fetchData();
       } else {
-        console.error('Failed to update:', await res.text());
+        console.error('Failed to update:', responseText);
+        alert('Failed to update: ' + responseText);
       }
     } catch (error) {
       console.error('Error updating task:', error);
+      alert('Error: ' + String(error));
     }
   };
 

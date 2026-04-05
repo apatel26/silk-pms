@@ -92,9 +92,9 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center overflow-hidden">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden ${logoUrl ? '' : 'bg-gradient-to-br from-amber-400 to-amber-600'}`}>
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
             ) : (
               <span className="text-sm font-bold text-slate-900">{propertyName.substring(0, 2).toUpperCase()}</span>
             )}
@@ -119,9 +119,9 @@ export default function DashboardLayout({
           <div className="flex items-center justify-between h-16">
             {/* Logo & Brand */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center overflow-hidden">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden ${logoUrl ? '' : 'bg-gradient-to-br from-amber-400 to-amber-600'}`}>
                 {logoUrl ? (
-                  <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
                   <span className="text-sm font-bold text-slate-900">{propertyName.substring(0, 2).toUpperCase()}</span>
                 )}

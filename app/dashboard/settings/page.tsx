@@ -100,7 +100,11 @@ export default function SettingsPage() {
         logo_url: logoUrl,
       };
 
-      console.log('Saving settings:', JSON.stringify(payload, null, 2));
+      console.log('=== SETTINGS SAVE ===');
+      console.log('Input city_tax_rate:', settings.city_tax_rate);
+      console.log('Rounded city_tax:', cityTax);
+      console.log('Saving as decimal:', cityTax / 100);
+      console.log('Full payload:', JSON.stringify(payload, null, 2));
 
       const res = await fetch('/api/settings', {
         method: 'POST',
@@ -109,12 +113,15 @@ export default function SettingsPage() {
         body: JSON.stringify(payload),
       });
 
+      const responseText = await res.text();
+      console.log('Response status:', res.status);
+      console.log('Response:', responseText);
+
       if (res.ok) {
         alert('Settings saved successfully!');
         fetchSettings();
       } else {
-        const err = await res.text();
-        alert('Error: ' + err);
+        alert('Error: ' + responseText);
       }
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -200,9 +207,9 @@ export default function SettingsPage() {
       <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
         <h3 className="text-lg font-semibold text-white mb-4">Logo</h3>
         <div className="flex items-center gap-6">
-          <div className="w-24 h-24 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center overflow-hidden">
+          <div className={`w-24 h-24 rounded-xl flex items-center justify-center overflow-hidden ${logoUrl ? 'bg-transparent' : 'bg-gradient-to-br from-amber-400 to-amber-600'}`}>
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
             ) : (
               <span className="text-2xl font-bold text-slate-900">AI</span>
             )}
