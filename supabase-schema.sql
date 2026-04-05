@@ -120,7 +120,7 @@ CREATE TABLE housekeeping_tasks (
   date DATE NOT NULL,
   room_id UUID REFERENCES rooms(id),
   room_number TEXT NOT NULL,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'cleaned', 'skip')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'cleaned', 'skip', 'out_of_order')),
   notes TEXT,
   assigned_to TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
