@@ -9,7 +9,7 @@ interface HousekeepingTask {
   id: string;
   date: string;
   room_number: string;
-  status: 'pending' | 'cleaned' | 'skip' | 'out_of_order';
+  status: 'pending' | 'cleaned' | 'skip';
   notes: string | null;
   assigned_to: string | null;
   created_at: string;
@@ -68,14 +68,15 @@ export default function HousekeepingPage() {
     return tasks.find(t => t.room_number === String(roomNum));
   };
 
-  // Single click = cycle status
+  // Single click = cycle status (only cycles through valid DB statuses)
+  // Valid statuses: pending, cleaned, skip (out_of_order not in DB yet)
   const handleRoomClick = async (roomNum: number) => {
     const task = getTaskForRoom(roomNum);
     const currentStatus = task?.status || 'pending';
+    // Cycle: pending -> cleaned -> skip -> pending
     const nextStatus: HousekeepingTask['status'] =
       currentStatus === 'pending' ? 'cleaned' :
       currentStatus === 'cleaned' ? 'skip' :
-      currentStatus === 'skip' ? 'out_of_order' :
       'pending';
 
     try {
@@ -114,10 +115,20 @@ export default function HousekeepingPage() {
   // Generate tasks for rooms that need cleaning
   const handleGenerateFromEntries = async () => {
     const rooms = getRoomsNeedingCleaning();
-    let created = 0;
+    let count = 0;
     for (const roomNum of rooms) {
       const existingTask = getTaskForRoom(roomNum);
-      if (!existingTask) {
+      if (existingTask) {
+        // Update existing to pending
+        await fetch('/api/housekeeping', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ id: existingTask.id, status: 'pending' }),
+        });
+        count++;
+      } else {
+        // Create new
         const res = await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -128,19 +139,27 @@ export default function HousekeepingPage() {
             status: 'pending',
           }),
         });
-        if (res.ok) created++;
+        if (res.ok) count++;
       }
     }
     fetchData();
-    alert('Auto: Created ' + created + ' tasks for rooms with checkouts today');
+    alert('Auto: Updated ' + count + ' tasks for rooms with checkouts today');
   };
 
   // Pending All
   const handlePendingAll = async () => {
-    let created = 0;
+    let count = 0;
     for (const roomNum of GUEST_ROOMS) {
       const existingTask = getTaskForRoom(roomNum);
-      if (!existingTask) {
+      if (existingTask) {
+        await fetch('/api/housekeeping', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ id: existingTask.id, status: 'pending' }),
+        });
+        count++;
+      } else {
         const res = await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -151,19 +170,27 @@ export default function HousekeepingPage() {
             status: 'pending',
           }),
         });
-        if (res.ok) created++;
+        if (res.ok) count++;
       }
     }
     fetchData();
-    alert('Pending All: Created ' + created + ' pending tasks');
+    alert('Pending All: Updated ' + count + ' rooms');
   };
 
   // Skip All
   const handleSkipAll = async () => {
-    let created = 0;
+    let count = 0;
     for (const roomNum of GUEST_ROOMS) {
       const existingTask = getTaskForRoom(roomNum);
-      if (!existingTask) {
+      if (existingTask) {
+        await fetch('/api/housekeeping', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ id: existingTask.id, status: 'skip' }),
+        });
+        count++;
+      } else {
         const res = await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -174,19 +201,27 @@ export default function HousekeepingPage() {
             status: 'skip',
           }),
         });
-        if (res.ok) created++;
+        if (res.ok) count++;
       }
     }
     fetchData();
-    alert('Skip All: Created ' + created + ' skip tasks');
+    alert('Skip All: Updated ' + count + ' rooms');
   };
 
   // Clean All
   const handleCleanAll = async () => {
-    let created = 0;
+    let count = 0;
     for (const roomNum of GUEST_ROOMS) {
       const existingTask = getTaskForRoom(roomNum);
-      if (!existingTask) {
+      if (existingTask) {
+        await fetch('/api/housekeeping', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ id: existingTask.id, status: 'cleaned' }),
+        });
+        count++;
+      } else {
         const res = await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -197,11 +232,11 @@ export default function HousekeepingPage() {
             status: 'cleaned',
           }),
         });
-        if (res.ok) created++;
+        if (res.ok) count++;
       }
     }
     fetchData();
-    alert('Clean All: Created ' + created + ' cleaned tasks');
+    alert('Clean All: Updated ' + count + ' rooms');
   };
 
   const handlePrint = () => {
@@ -214,14 +249,12 @@ export default function HousekeepingPage() {
     cleaned: tasks.filter(t => t.status === 'cleaned').length,
     pending: tasks.filter(t => t.status === 'pending').length,
     skipped: tasks.filter(t => t.status === 'skip').length,
-    outOfOrder: tasks.filter(t => t.status === 'out_of_order').length,
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'cleaned': return 'bg-green-500/20 border-green-500';
       case 'skip': return 'bg-yellow-500/20 border-yellow-500';
-      case 'out_of_order': return 'bg-red-500/20 border-red-500';
       default: return 'bg-slate-700/50 border-slate-600';
     }
   };
@@ -230,7 +263,6 @@ export default function HousekeepingPage() {
     switch (status) {
       case 'cleaned': return '✓';
       case 'skip': return '—';
-      case 'out_of_order': return '✕';
       default: return '○';
     }
   };
@@ -284,7 +316,6 @@ export default function HousekeepingPage() {
             <span className="text-green-400">✓ {stats.cleaned}</span>
             <span className="text-slate-400">○ {stats.pending}</span>
             <span className="text-yellow-400">— {stats.skipped}</span>
-            <span className="text-red-400">✕ {stats.outOfOrder}</span>
           </div>
         </div>
 
@@ -337,10 +368,10 @@ export default function HousekeepingPage() {
                     ${getStatusColor(status)}
                   `}
                 >
-                  <span className={`text-lg font-bold ${status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : status === 'out_of_order' ? 'text-red-400' : 'text-white'}`}>
+                  <span className={`text-lg font-bold ${status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : 'text-white'}`}>
                     {roomNum}
                   </span>
-                  <span className={`text-xl ${status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : status === 'out_of_order' ? 'text-red-400' : 'text-slate-500'}`}>
+                  <span className={`text-xl ${status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : 'text-slate-500'}`}>
                     {getStatusIcon(status)}
                   </span>
                   {roomNum >= 201 && (
@@ -366,7 +397,7 @@ export default function HousekeepingPage() {
 
       {/* Legend */}
       <div className="bg-slate-900 rounded-xl p-6 border border-slate-800 print:hidden">
-        <h3 className="text-sm font-semibold text-white mb-3">Click room to cycle: Pending → Cleaned → Skip → Out of Order → Pending</h3>
+        <h3 className="text-sm font-semibold text-white mb-3">Click room to cycle: Pending → Cleaned → Skip → Pending</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div className="flex items-center gap-2">
             <span className="w-8 h-8 rounded bg-green-500/20 border-2 border-green-500/50 flex items-center justify-center text-green-400 font-bold">✓</span>
@@ -375,10 +406,6 @@ export default function HousekeepingPage() {
           <div className="flex items-center gap-2">
             <span className="w-8 h-8 rounded bg-yellow-500/20 border-2 border-yellow-500/50 flex items-center justify-center text-yellow-400 font-bold">—</span>
             <span className="text-white">Skipped</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded bg-red-500/20 border-2 border-red-500/50 flex items-center justify-center text-red-400 font-bold">✕</span>
-            <span className="text-white">Out of Order</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-8 h-8 rounded bg-slate-700/50 border-2 border-slate-600 flex items-center justify-center text-slate-400 font-bold">○</span>

@@ -85,7 +85,7 @@ export default function SettingsPage() {
       const cityTax = Math.round(settings.city_tax_rate);
       const stateTax = Math.round(settings.state_tax_rate);
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         name: settings.name,
         address: settings.address,
         phone: settings.phone,
@@ -97,8 +97,12 @@ export default function SettingsPage() {
         weekly_50amp: settings.weekly_50amp,
         monthly_30amp: settings.monthly_30amp,
         monthly_50amp: settings.monthly_50amp,
-        logo_url: logoUrl,
       };
+
+      // Only include logo_url if user uploaded a new one (don't clear existing)
+      if (logoUrl) {
+        payload.logo_url = logoUrl;
+      }
 
       const res = await fetch('/api/settings', {
         method: 'POST',
