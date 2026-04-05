@@ -27,13 +27,16 @@ export async function GET() {
     const { data, error } = await supabase
       .from('property_settings')
       .select('*')
-      .single();
+      .limit(1);
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
-      throw error;
+    if (error) {
+      console.error('Error fetching settings:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data || {
+    const settings = data && data.length > 0 ? data[0] : null;
+
+    return NextResponse.json(settings || {
       name: 'American Inn and RV Park',
       address: '',
       phone: '',
@@ -48,7 +51,7 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error fetching settings:', error);
-    return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
 
@@ -63,6 +66,17 @@ export async function PUT(request: Request) {
 
     const body = await request.json();
     const supabase = createServerClient();
+
+    // First try to get existing settings
+    const { data: existing, error: fetchError } = await supabase
+      .from('property_settings')
+      .select('id')
+      .limit(1);
+
+    if (fetchError) {
+      console.error('Fetch existing error:', fetchError);
+      return NextResponse.json({ error: 'Fetch error: ' + fetchError.message }, { status: 500 });
+    }
 
     const updateData = {
       name: body.name,
@@ -79,19 +93,13 @@ export async function PUT(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    // Check if settings exist
-    const { data: existing } = await supabase
-      .from('property_settings')
-      .select('id')
-      .single();
-
     let result;
-    if (existing) {
+    if (existing && existing.length > 0) {
       // Update existing
       const { data, error } = await supabase
         .from('property_settings')
         .update(updateData)
-        .eq('id', existing.id)
+        .eq('id', existing[0].id)
         .select()
         .single();
       result = { data, error };
@@ -106,8 +114,8 @@ export async function PUT(request: Request) {
     }
 
     if (result.error) {
-      console.error('Settings save error:', result.error);
-      throw result.error;
+      console.error('Save error:', result.error);
+      return NextResponse.json({ error: 'Save error: ' + result.error.message }, { status: 500 });
     }
 
     return NextResponse.json(result.data);

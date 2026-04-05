@@ -98,7 +98,7 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Error saving settings');
+      alert('Error: ' + String(error));
     } finally {
       setSaving(false);
     }
