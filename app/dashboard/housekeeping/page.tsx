@@ -84,12 +84,14 @@ export default function HousekeepingPage() {
         res = await fetch('/api/housekeeping', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ id: task.id, status: nextStatus }),
         });
       } else {
         res = await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             date: selectedDate,
             room_number: String(roomNum),
@@ -99,7 +101,9 @@ export default function HousekeepingPage() {
       }
 
       if (res.ok) {
-        fetchData(); // Refresh after update
+        fetchData();
+      } else {
+        console.error('Failed to update:', await res.text());
       }
     } catch (error) {
       console.error('Error updating task:', error);
@@ -115,6 +119,7 @@ export default function HousekeepingPage() {
         await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             date: selectedDate,
             room_number: String(roomNum),
@@ -134,6 +139,7 @@ export default function HousekeepingPage() {
         await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             date: selectedDate,
             room_number: String(roomNum),
@@ -153,6 +159,7 @@ export default function HousekeepingPage() {
         await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             date: selectedDate,
             room_number: String(roomNum),
@@ -172,6 +179,7 @@ export default function HousekeepingPage() {
         await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             date: selectedDate,
             room_number: String(roomNum),

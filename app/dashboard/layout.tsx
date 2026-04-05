@@ -12,6 +12,11 @@ interface User {
   role: string;
 }
 
+interface Settings {
+  name: string;
+  logo_url: string | null;
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -22,10 +27,30 @@ export default function DashboardLayout({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [propertyName, setPropertyName] = useState('American Inn');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
+    fetchSettings();
   }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.name) {
+          setPropertyName(data.name.split('&')[0].trim());
+        }
+        if (data.logo_url) {
+          setLogoUrl(data.logo_url);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    }
+  };
 
   const checkAuth = async () => {
     try {
@@ -67,8 +92,12 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-            <span className="text-xl font-bold text-slate-900">AI</span>
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center overflow-hidden">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+            ) : (
+              <span className="text-sm font-bold text-slate-900">{propertyName.substring(0, 2).toUpperCase()}</span>
+            )}
           </div>
           <div className="flex items-center gap-2 text-slate-400">
             <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
@@ -90,11 +119,15 @@ export default function DashboardLayout({
           <div className="flex items-center justify-between h-16">
             {/* Logo & Brand */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-                <span className="text-sm font-bold text-slate-900">AI</span>
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center overflow-hidden">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+                ) : (
+                  <span className="text-sm font-bold text-slate-900">{propertyName.substring(0, 2).toUpperCase()}</span>
+                )}
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-sm font-semibold text-white">American Inn</h1>
+                <h1 className="text-sm font-semibold text-white">{propertyName}</h1>
                 <p className="text-xs text-amber-400">& RV Park</p>
               </div>
             </div>

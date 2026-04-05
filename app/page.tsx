@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
@@ -8,7 +8,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [propertyName, setPropertyName] = useState('American Inn & RV Park');
   const router = useRouter();
+
+  useEffect(() => {
+    // Fetch settings for logo and property name
+    fetch('/api/settings')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          if (data.logo_url) setLogoUrl(data.logo_url);
+          if (data.name) setPropertyName(data.name);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +52,11 @@ export default function LoginPage() {
     }
   };
 
+  // Split property name for display
+  const nameParts = propertyName.split('&');
+  const mainName = nameParts[0].trim();
+  const suffix = nameParts.length > 1 ? '&' + nameParts.slice(1).join('&').trim() : '';
+
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Branding */}
@@ -47,13 +67,17 @@ export default function LoginPage() {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
 
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12">
-          {/* Logo placeholder */}
-          <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center mb-8 shadow-2xl shadow-amber-500/20">
-            <span className="text-4xl font-bold text-slate-900">AI</span>
+          {/* Logo */}
+          <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center mb-8 shadow-2xl shadow-amber-500/20 overflow-hidden">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
+            ) : (
+              <span className="text-4xl font-bold text-slate-900">{mainName.substring(0, 2).toUpperCase()}</span>
+            )}
           </div>
 
-          <h1 className="text-4xl font-bold text-white mb-2">American Inn</h1>
-          <h2 className="text-xl text-amber-400 font-medium">& RV Park</h2>
+          <h1 className="text-4xl font-bold text-white mb-2">{mainName}</h1>
+          {suffix && <h2 className="text-xl text-amber-400 font-medium">{suffix}</h2>}
 
           <p className="mt-8 text-slate-400 text-center max-w-md">
             Welcome to Silk PMS. Manage your property with ease.
@@ -102,12 +126,16 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-              <span className="text-xl font-bold text-slate-900">AI</span>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center overflow-hidden">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+              ) : (
+                <span className="text-lg font-bold text-slate-900">{mainName.substring(0, 2).toUpperCase()}</span>
+              )}
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">American Inn</h1>
-              <p className="text-sm text-amber-400">& RV Park</p>
+              <h1 className="text-xl font-bold text-white">{mainName}</h1>
+              {suffix && <p className="text-sm text-amber-400">{suffix}</p>}
             </div>
           </div>
 

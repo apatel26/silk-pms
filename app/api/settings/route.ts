@@ -81,12 +81,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Fetch error: ' + fetchError.message }, { status: 500 });
     }
 
+    // Parse and round tax rates to avoid floating point issues
+    const cityTaxRate = parseFloat(body.city_tax_rate);
+    const stateTaxRate = parseFloat(body.state_tax_rate);
+
     const updateData = {
       name: body.name || 'American Inn and RV Park',
       address: body.address || '',
       phone: body.phone || '',
-      city_tax_rate: parseFloat(body.city_tax_rate) || 0.07,
-      state_tax_rate: parseFloat(body.state_tax_rate) || 0.06,
+      city_tax_rate: isNaN(cityTaxRate) ? 0.07 : Math.round(cityTaxRate * 10000) / 10000,
+      state_tax_rate: isNaN(stateTaxRate) ? 0.06 : Math.round(stateTaxRate * 10000) / 10000,
       default_room_rate: parseFloat(body.default_room_rate) || 70.00,
       default_pet_fee: parseFloat(body.default_pet_fee) || 20.00,
       weekly_30amp: parseFloat(body.weekly_30amp) || 200.00,
@@ -98,10 +102,8 @@ export async function POST(request: Request) {
     };
 
     let result;
-    console.log('Existing row:', existing);
 
     if (existing && existing.length > 0) {
-      console.log('Updating existing row with id:', existing[0].id);
       // Update existing row by id
       const { data, error } = await supabase
         .from('property_settings')
@@ -109,17 +111,14 @@ export async function POST(request: Request) {
         .eq('id', existing[0].id)
         .select()
         .single();
-      console.log('Update result:', { data, error });
       result = { data, error };
     } else {
-      console.log('Inserting new row');
       // No existing row, insert new one
       const { data, error } = await supabase
         .from('property_settings')
         .insert([updateData])
         .select()
         .single();
-      console.log('Insert result:', { data, error });
       result = { data, error };
     }
 
@@ -128,7 +127,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Save error: ' + result.error.message, code: result.error.code }, { status: 500 });
     }
 
-    console.log('Settings saved successfully:', result.data);
     return NextResponse.json({ success: true, data: result.data });
   } catch (error) {
     console.error('Error saving settings:', error);
