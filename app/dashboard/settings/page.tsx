@@ -40,22 +40,27 @@ export default function SettingsPage() {
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/settings');
-      if (res.ok) {
-        const data = await res.json();
-        setSettings({
-          name: data.name || 'American Inn and RV Park',
-          address: data.address || '',
-          phone: data.phone || '',
-          city_tax_rate: (data.city_tax_rate || 0.07) * 100,
-          state_tax_rate: (data.state_tax_rate || 0.06) * 100,
-          default_room_rate: data.default_room_rate || 70,
-          default_pet_fee: data.default_pet_fee || 20,
-          weekly_30amp: data.weekly_30amp || 200,
-          weekly_50amp: data.weekly_50amp || 230,
-          monthly_30amp: data.monthly_30amp || 400,
-          monthly_50amp: data.monthly_50amp || 500,
-        });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Settings fetch error:', res.status, text);
+        return;
       }
+      const text = await res.text();
+      if (!text) return;
+      const data = JSON.parse(text);
+      setSettings({
+        name: data.name || 'American Inn and RV Park',
+        address: data.address || '',
+        phone: data.phone || '',
+        city_tax_rate: (data.city_tax_rate || 0.07) * 100,
+        state_tax_rate: (data.state_tax_rate || 0.06) * 100,
+        default_room_rate: data.default_room_rate || 70,
+        default_pet_fee: data.default_pet_fee || 20,
+        weekly_30amp: data.weekly_30amp || 200,
+        weekly_50amp: data.weekly_50amp || 230,
+        monthly_30amp: data.monthly_30amp || 400,
+        monthly_50amp: data.monthly_50amp || 500,
+      });
     } catch (error) {
       console.error('Error fetching settings:', error);
     } finally {
@@ -93,8 +98,8 @@ export default function SettingsPage() {
       if (res.ok) {
         alert('Settings saved successfully!');
       } else {
-        const err = await res.json();
-        alert('Error: ' + (err.error || 'Failed to save'));
+        const text = await res.text();
+        alert('Error: ' + (text || 'Failed to save'));
       }
     } catch (error) {
       console.error('Error saving settings:', error);
