@@ -18,6 +18,7 @@ interface HousekeepingTask {
 interface Entry {
   id: string;
   room_number: string | null;
+  check_in: string | null;
   check_out: string | null;
   status: string;
 }
