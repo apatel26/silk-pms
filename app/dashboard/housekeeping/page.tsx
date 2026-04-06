@@ -147,7 +147,6 @@ export default function HousekeepingPage() {
     if (stayingRes.ok) {
       stayingEntries = await stayingRes.json();
     }
-    console.log('Staying entries for', selectedDate, ':', stayingEntries);
 
     // Also get checkout entries for today
     const checkoutRes = await fetch(`/api/entries?checkout_date=${selectedDate}`);
@@ -171,26 +170,25 @@ export default function HousekeepingPage() {
       const checkIn = dayjs(entry.check_in);
       const checkOut = dayjs(entry.check_out);
 
-      console.log('Checking room:', entry.room_number, '| today:', selectedDate, '| checkIn:', entry.check_in, '| checkOut:', entry.check_out);
-
       // Check if today is checkout day → dirty
-      if (today.isSame(checkOut, 'day')) {
-        console.log('  → Checkout day, DIRTY');
-        return true;
-      }
+      if (today.isSame(checkOut, 'day')) return true;
 
       // Check if today is every 2nd day from check-in (day 2, 4, 6, ...)
       // NOT day 0 (check-in day) because room was cleaned for guest
       const daysSinceCheckIn = today.diff(checkIn, 'day');
-      console.log('  → Days since check-in:', daysSinceCheckIn);
-      if (daysSinceCheckIn >= 2 && daysSinceCheckIn % 2 === 0) {
-        console.log('  → Every 2nd day from day 2, DIRTY');
-        return true;
-      }
+      if (daysSinceCheckIn >= 2 && daysSinceCheckIn % 2 === 0) return true;
 
-      console.log('  → OCCUPIED (not due)');
       return false;
     };
+
+    // Build debug info
+    const debugInfo: string[] = [];
+    debugInfo.push(`Date: ${selectedDate}`);
+    debugInfo.push(`Staying guests: ${stayingEntries.length}`);
+    stayingEntries.forEach(e => {
+      const daysSince = dayjs(selectedDate).diff(dayjs(e.check_in), 'day');
+      debugInfo.push(`Room ${e.room_number}: check-in ${e.check_in}, checkout ${e.check_out}, day ${daysSince}`);
+    });
 
     let count = 0;
     for (const roomNum of GUEST_ROOMS) {
@@ -238,7 +236,7 @@ export default function HousekeepingPage() {
       }
     }
     fetchData();
-    alert('Auto: Updated ' + count + ' rooms');
+    alert('Auto: Updated ' + count + ' rooms\n\n' + debugInfo.join('\n'));
   };
 
   // Dirty All
