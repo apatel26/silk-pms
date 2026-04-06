@@ -542,34 +542,43 @@ export default function HousekeepingPage() {
               const room2 = GUEST_ROOMS[i + 12];
               const status1 = getRoomStatus(room1);
               const status2 = room2 ? getRoomStatus(room2) : null;
+              const isLastOfFloor = i === 11;
               return (
-                <tr key={i} className="border-b border-black">
-                  <td className="border border-black p-1 text-center font-bold">{room1}</td>
-                  <td className="border border-black p-1 text-center">{status1 === 'occupied' ? 'D' : status1.charAt(0).toUpperCase()}</td>
-                  <td className="border border-black p-1 text-center w-6"></td>
-                  <td className="border border-black p-1 text-center w-6"></td>
-                  <td className="border border-black p-1 text-center w-6"></td>
-                  <td className="border border-black p-1 text-center w-6"></td>
-                  {room2 ? (
-                    <>
-                      <td className="border border-black p-1 text-center font-bold">{room2}</td>
-                      <td className="border border-black p-1 text-center">{status2 === 'occupied' ? 'D' : status2!.charAt(0).toUpperCase()}</td>
-                      <td className="border border-black p-1 text-center w-6"></td>
-                      <td className="border border-black p-1 text-center w-6"></td>
-                      <td className="border border-black p-1 text-center w-6"></td>
-                      <td className="border border-black p-1 text-center w-6"></td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="border border-black p-1"></td>
-                      <td className="border border-black p-1"></td>
-                      <td className="border border-black p-1"></td>
-                      <td className="border border-black p-1"></td>
-                      <td className="border border-black p-1"></td>
-                      <td className="border border-black p-1"></td>
-                    </>
+                <>
+                  <tr key={i} className="border-b border-black">
+                    <td className="border border-black p-1 text-center font-bold">{room1}</td>
+                    <td className="border border-black p-1 text-center">{status1 === 'occupied' ? 'D' : status1.charAt(0).toUpperCase()}</td>
+                    <td className="border border-black p-1 text-center w-6"></td>
+                    <td className="border border-black p-1 text-center w-6"></td>
+                    <td className="border border-black p-1 text-center w-6"></td>
+                    <td className="border border-black p-1 text-center w-6"></td>
+                    {room2 ? (
+                      <>
+                        <td className="border border-black p-1 text-center font-bold">{room2}</td>
+                        <td className="border border-black p-1 text-center">{status2 === 'occupied' ? 'D' : status2!.charAt(0).toUpperCase()}</td>
+                        <td className="border border-black p-1 text-center w-6"></td>
+                        <td className="border border-black p-1 text-center w-6"></td>
+                        <td className="border border-black p-1 text-center w-6"></td>
+                        <td className="border border-black p-1 text-center w-6"></td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="border border-black p-1"></td>
+                        <td className="border border-black p-1"></td>
+                        <td className="border border-black p-1"></td>
+                        <td className="border border-black p-1"></td>
+                        <td className="border border-black p-1"></td>
+                        <td className="border border-black p-1"></td>
+                      </>
+                    )}
+                  </tr>
+                  {isLastOfFloor && (
+                    <tr key={'spacer-' + i} className="border-b border-black">
+                      <td colSpan={6} className="border border-black p-1 bg-slate-100">2nd Floor</td>
+                      <td colSpan={6} className="border border-black p-1 bg-slate-100"></td>
+                    </tr>
                   )}
-                </tr>
+                </>
               );
             })}
           </tbody>
