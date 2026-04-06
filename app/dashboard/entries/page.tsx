@@ -432,7 +432,9 @@ export default function EntriesPage() {
                 {entry ? (
                   <div className="mt-2 text-left">
                     <p className="text-sm text-white truncate">{entry.customer_name || 'Guest'}</p>
-                    <p className="text-sm text-amber-400">${entry.total.toFixed(2)}</p>
+                    <p className={`text-sm ${entry.is_refund ? 'text-red-400' : 'text-amber-400'}`}>
+                      ${entry.is_refund ? Math.abs(entry.total).toFixed(2) : entry.total.toFixed(2)}
+                    </p>
                     {entry.pet_count > 0 && <p className="text-xs text-slate-400">🐾 x{entry.pet_count}</p>}
                     {entry.is_refund && <p className="text-xs text-red-400 font-medium">REFUND</p>}
                   </div>
@@ -464,7 +466,9 @@ export default function EntriesPage() {
                 {entry ? (
                   <div className="mt-1 text-left">
                     <p className="text-xs text-white truncate">{entry.customer_name || 'Guest'}</p>
-                    <p className="text-xs text-blue-400">${entry.total.toFixed(2)}</p>
+                    <p className={`text-xs ${entry.is_refund ? 'text-red-400' : 'text-blue-400'}`}>
+                      ${entry.is_refund ? Math.abs(entry.total).toFixed(2) : entry.total.toFixed(2)}
+                    </p>
                     {entry.is_refund && <p className="text-xs text-red-400 font-medium">REFUND</p>}
                   </div>
                 ) : (

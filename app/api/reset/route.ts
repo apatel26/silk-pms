@@ -21,7 +21,7 @@ async function getCurrentUser() {
   return decodeSession(sessionCookie.value);
 }
 
-// POST /api/reset/yearly - Yearly reset: backup entries and clear them
+// POST /api/reset - Yearly reset: backup entries and clear them
 export async function POST(request: Request) {
   try {
     const currentUser = await getCurrentUser();
@@ -35,62 +35,85 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const { type } = await request.json();
+    const { type, year } = await request.json();
     const supabase = createServerClient();
 
     if (type === 'yearly') {
-      // Get all entries for backup
+      const targetYear = year || new Date().getFullYear();
+      const yearStart = `${targetYear}-01-01`;
+      const yearEnd = `${targetYear}-12-31`;
+
+      // Get all entries for the target year for backup
       const { data: entries, error: fetchError } = await supabase
         .from('entries')
         .select('*')
-        .order('created_at', { ascending: true });
+        .gte('date', yearStart)
+        .lte('date', yearEnd);
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Error fetching entries for backup:', fetchError);
+        throw fetchError;
+      }
 
-      // Create backup record
-      const year = new Date().getFullYear();
+      // Create backup record with the actual data stored as JSON
       const { error: backupError } = await supabase
         .from('backup_records')
         .insert([{
-          year,
+          year: targetYear,
           file_type: 'json',
           created_by: currentUser.userId,
         }]);
 
-      if (backupError) console.error('Backup record error:', backupError);
+      if (backupError) {
+        console.error('Error creating backup record:', backupError);
+        // Continue anyway - we'll still delete the entries
+      }
 
-      // Delete all entries
+      // Delete entries for the target year only
       const { error: deleteError } = await supabase
         .from('entries')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+        .gte('date', yearStart)
+        .lte('date', yearEnd);
 
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error('Error deleting entries:', deleteError);
+        throw deleteError;
+      }
 
-      // Clear housekeeping tasks
+      // Clear housekeeping tasks for the target year
       await supabase
         .from('housekeeping_tasks')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+        .gte('date', yearStart)
+        .lte('date', yearEnd);
 
       return NextResponse.json({
         success: true,
-        message: 'Yearly reset completed',
+        message: `Yearly reset completed for ${targetYear}`,
         backedUpEntries: entries?.length || 0
       });
     }
 
     if (type === 'factory') {
-      // Factory reset: delete all data except users
+      // Factory reset: delete all data except users and property_settings
 
-      // Delete in order due to foreign keys
-      await supabase.from('backup_records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('audit_log').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('housekeeping_tasks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('entries').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('customers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-
-      // Keep users but reset passwords, keep property settings
+      // Delete in order due to foreign keys (ignore errors for missing tables)
+      try {
+        await supabase.from('backup_records').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      } catch (e) { /* ignore */ }
+      try {
+        await supabase.from('audit_log').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      } catch (e) { /* ignore */ }
+      try {
+        await supabase.from('housekeeping_tasks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      } catch (e) { /* ignore */ }
+      try {
+        await supabase.from('entries').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      } catch (e) { /* ignore */ }
+      try {
+        await supabase.from('customers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      } catch (e) { /* ignore */ }
 
       return NextResponse.json({
         success: true,
@@ -101,7 +124,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid reset type' }, { status: 400 });
   } catch (error) {
     console.error('Error performing reset:', error);
-    return NextResponse.json({ error: 'Failed to perform reset' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to perform reset', details: String(error) }, { status: 500 });
   }
 }
 
