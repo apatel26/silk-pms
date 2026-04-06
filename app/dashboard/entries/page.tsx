@@ -61,6 +61,17 @@ interface FormData {
   group_rooms: string[];
 }
 
+interface Settings {
+  default_room_rate: number;
+  default_pet_fee: number;
+  city_tax_rate: number;
+  state_tax_rate: number;
+  weekly_30amp: number;
+  weekly_50amp: number;
+  monthly_30amp: number;
+  monthly_50amp: number;
+}
+
 const DEFAULT_PET_FEE = 20;
 
 export default function EntriesPage() {
@@ -70,6 +81,16 @@ export default function EntriesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const [view, setView] = useState<'guests' | 'rv'>('guests');
+  const [settings, setSettings] = useState<Settings>({
+    default_room_rate: 70,
+    default_pet_fee: 20,
+    city_tax_rate: 0.07,
+    state_tax_rate: 0.06,
+    weekly_30amp: 200,
+    weekly_50amp: 230,
+    monthly_30amp: 400,
+    monthly_50amp: 500,
+  });
 
   const [formData, setFormData] = useState<FormData>({
     entry_type: 'guest',
@@ -96,7 +117,31 @@ export default function EntriesPage() {
 
   useEffect(() => {
     fetchEntries();
+    fetchSettings();
   }, [selectedDate]);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data) {
+          setSettings({
+            default_room_rate: parseFloat(data.default_room_rate) || 70,
+            default_pet_fee: parseFloat(data.default_pet_fee) || 20,
+            city_tax_rate: parseFloat(data.city_tax_rate) || 0.07,
+            state_tax_rate: parseFloat(data.state_tax_rate) || 0.06,
+            weekly_30amp: parseFloat(data.weekly_30amp) || 200,
+            weekly_50amp: parseFloat(data.weekly_50amp) || 230,
+            monthly_30amp: parseFloat(data.monthly_30amp) || 400,
+            monthly_50amp: parseFloat(data.monthly_50amp) || 500,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    }
+  };
 
   const fetchEntries = async () => {
     try {
@@ -140,11 +185,16 @@ export default function EntriesPage() {
 
   const summary = getSummary();
 
-  // RV rates from settings (no tax)
-  const RV_RATES = {
-    daily: { '30amp': 35, '50amp': 45 },
-    weekly: { '30amp': 200, '50amp': 230 },
-    monthly: { '30amp': 400, '50amp': 500 },
+  // Get RV rate based on type, duration, and settings
+  const getRVRate = (duration: 'daily' | 'weekly' | 'monthly', ampType: '30amp' | '50amp') => {
+    if (duration === 'daily') {
+      // Daily rates are calculated differently - assume $35 for 30amp, $45 for 50amp as default daily
+      return ampType === '30amp' ? 35 : 45;
+    } else if (duration === 'weekly') {
+      return ampType === '30amp' ? settings.weekly_30amp : settings.weekly_50amp;
+    } else {
+      return ampType === '30amp' ? settings.monthly_30amp : settings.monthly_50amp;
+    }
   };
 
   const calculateTotal = () => {
@@ -162,10 +212,10 @@ export default function EntriesPage() {
 
     if (formData.entry_type === 'guest') {
       // Guest room pricing (with tax)
-      rate = formData.rate_plan === 'custom' ? formData.custom_rate : 70;
+      rate = formData.rate_plan === 'custom' ? formData.custom_rate : settings.default_room_rate;
       const subtotalForNights = rate * numNights;
-      taxC = subtotalForNights * 0.07;
-      taxS = subtotalForNights * 0.06;
+      taxC = subtotalForNights * settings.city_tax_rate;
+      taxS = subtotalForNights * settings.state_tax_rate;
       subtotal = subtotalForNights + taxC + taxS;
 
       if (formData.pet_count > 0) {
@@ -175,7 +225,7 @@ export default function EntriesPage() {
       }
     } else {
       // RV pricing (no tax)
-      rate = RV_RATES[formData.rv_duration][formData.rv_type];
+      rate = getRVRate(formData.rv_duration, formData.rv_type);
       subtotal = rate; // Flat rate based on duration
     }
 
@@ -200,18 +250,18 @@ export default function EntriesPage() {
 
     if (formData.entry_type === 'guest') {
       // Guest room pricing (with tax)
-      rate = formData.rate_plan === 'custom' ? formData.custom_rate : 70;
+      rate = formData.rate_plan === 'custom' ? formData.custom_rate : settings.default_room_rate;
       subtotalForNights = rate * numNights;
-      taxC = subtotalForNights * 0.07;
-      taxS = subtotalForNights * 0.06;
+      taxC = subtotalForNights * settings.city_tax_rate;
+      taxS = subtotalForNights * settings.state_tax_rate;
       if (formData.pet_count > 0) {
         petFee = formData.pet_fee_type === 'default'
-          ? DEFAULT_PET_FEE * formData.pet_count * numNights
+          ? settings.default_pet_fee * formData.pet_count * numNights
           : formData.custom_pet_fee * formData.pet_count * numNights;
       }
     } else {
       // RV pricing (no tax)
-      rate = RV_RATES[formData.rv_duration][formData.rv_type];
+      rate = getRVRate(formData.rv_duration, formData.rv_type);
       subtotalForNights = rate;
     }
 
@@ -635,7 +685,7 @@ export default function EntriesPage() {
                             : 'bg-slate-800 text-slate-400 hover:text-white'
                         }`}
                       >
-                        Daily<br/><span className="text-xs">${RV_RATES.daily[formData.rv_type]}</span>
+                        Daily<br/><span className="text-xs">${getRVRate('daily', formData.rv_type)}</span>
                       </button>
                       <button
                         type="button"
@@ -646,7 +696,7 @@ export default function EntriesPage() {
                             : 'bg-slate-800 text-slate-400 hover:text-white'
                         }`}
                       >
-                        Weekly<br/><span className="text-xs">${RV_RATES.weekly[formData.rv_type]}</span>
+                        Weekly<br/><span className="text-xs">${getRVRate('weekly', formData.rv_type)}</span>
                       </button>
                       <button
                         type="button"
@@ -657,7 +707,7 @@ export default function EntriesPage() {
                             : 'bg-slate-800 text-slate-400 hover:text-white'
                         }`}
                       >
-                        Monthly<br/><span className="text-xs">${RV_RATES.monthly[formData.rv_type]}</span>
+                        Monthly<br/><span className="text-xs">${getRVRate('monthly', formData.rv_type)}</span>
                       </button>
                     </div>
                   </div>
