@@ -96,6 +96,7 @@ CREATE TABLE entries (
   check_in DATE,
   check_out DATE,
   room_rate NUMERIC(10,2) DEFAULT 0,
+  num_nights INTEGER DEFAULT 1,
   tax_c NUMERIC(10,2) DEFAULT 0,
   tax_s NUMERIC(10,2) DEFAULT 0,
   pet_fee NUMERIC(10,2) DEFAULT 0,
@@ -109,6 +110,8 @@ CREATE TABLE entries (
   is_refund BOOLEAN DEFAULT false,
   refund_amount NUMERIC(10,2) DEFAULT 0,
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'checked_out', 'cancelled')),
+  group_id UUID,
+  is_group_main BOOLEAN DEFAULT false,
   created_by UUID,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
