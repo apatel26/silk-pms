@@ -52,8 +52,6 @@ interface FormData {
   cash: number;
   cc: number;
   note: string;
-  is_refund: boolean;
-  refund_amount: number;
   is_group: boolean;
   group_rooms: string[];
 }
@@ -85,8 +83,6 @@ export default function EntriesPage() {
     cash: 0,
     cc: 0,
     note: '',
-    is_refund: false,
-    refund_amount: 0,
     is_group: false,
     group_rooms: [],
   });
@@ -158,11 +154,8 @@ export default function EntriesPage() {
           : formData.custom_pet_fee * formData.pet_count * numNights)
       : 0;
 
+    // Extra charges can be positive (charge) or negative (credit/refund)
     const extraCharges = formData.extra_charges.reduce((sum, ec) => sum + ec.amount, 0);
-
-    if (formData.is_refund) {
-      return -formData.refund_amount;
-    }
 
     return subtotal + petFee + extraCharges;
   };
@@ -205,8 +198,8 @@ export default function EntriesPage() {
       cash: isMainRoom ? (formData.cash || null) : null,
       cc: isMainRoom ? (formData.cc || null) : null,
       note: formData.note || null,
-      is_refund: formData.is_refund,
-      refund_amount: formData.is_refund ? formData.refund_amount : 0,
+      is_refund: false,
+      refund_amount: 0,
       status: 'active',
       group_id: groupId,
       is_group_main: isMainRoom ? true : false,
@@ -278,8 +271,6 @@ export default function EntriesPage() {
       cash: entry.cash || 0,
       cc: entry.cc || 0,
       note: entry.note || '',
-      is_refund: entry.is_refund,
-      refund_amount: entry.refund_amount,
       is_group: !!entry.group_id,
       group_rooms: [],
     });
@@ -307,8 +298,6 @@ export default function EntriesPage() {
       cash: 0,
       cc: 0,
       note: '',
-      is_refund: false,
-      refund_amount: 0,
       is_group: false,
       group_rooms: [],
     });
@@ -723,7 +712,7 @@ export default function EntriesPage() {
               {/* Extra Charges */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-slate-300">Extra Charges</label>
+                  <label className="text-sm font-medium text-slate-300">Charges & Credits</label>
                   <button
                     type="button"
                     onClick={addExtraCharge}
@@ -739,14 +728,16 @@ export default function EntriesPage() {
                       value={ec.description}
                       onChange={(e) => updateExtraCharge(index, 'description', e.target.value)}
                       className="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      placeholder="Description"
+                      placeholder={ec.amount < 0 ? "Credit description" : "Charge description"}
                     />
                     <input
                       type="number"
                       value={ec.amount}
                       onChange={(e) => updateExtraCharge(index, 'amount', parseFloat(e.target.value) || 0)}
-                      className="w-24 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      placeholder="Amount"
+                      className={`w-24 px-4 py-2 rounded-lg border text-white focus:outline-none focus:ring-2 ${
+                        ec.amount < 0 ? 'bg-red-500/20 border-red-500/50 text-red-400 focus:ring-red-500' : 'bg-slate-800 border-slate-700 focus:ring-amber-500'
+                      }`}
+                      placeholder={ec.amount < 0 ? "-0.00" : "0.00"}
                       step="0.01"
                     />
                     <button
@@ -760,6 +751,11 @@ export default function EntriesPage() {
                     </button>
                   </div>
                 ))}
+                {formData.extra_charges.some(ec => ec.amount < 0) && (
+                  <p className="text-xs text-red-400 mt-1">
+                    Credits will reduce the total
+                  </p>
+                )}
               </div>
 
               {/* Payment */}
@@ -788,29 +784,6 @@ export default function EntriesPage() {
                 </div>
               </div>
 
-              {/* Refund */}
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_refund}
-                    onChange={(e) => setFormData({ ...formData, is_refund: e.target.checked })}
-                    className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-red-500 focus:ring-red-500"
-                  />
-                  <span className="text-slate-300">This is a refund</span>
-                </label>
-                {formData.is_refund && (
-                  <input
-                    type="number"
-                    value={formData.refund_amount}
-                    onChange={(e) => setFormData({ ...formData, refund_amount: parseFloat(e.target.value) || 0 })}
-                    className="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Refund amount"
-                    step="0.01"
-                  />
-                )}
-              </div>
-
               {/* Note */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Note</label>
@@ -827,8 +800,8 @@ export default function EntriesPage() {
               <div className="bg-slate-800 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Total</span>
-                  <span className={`text-2xl font-bold ${formData.is_refund ? 'text-red-400' : 'text-amber-400'}`}>
-                    ${calculateTotal().toFixed(2)}
+                  <span className={`text-2xl font-bold ${calculateTotal() < 0 ? 'text-red-400' : 'text-amber-400'}`}>
+                    ${Math.abs(calculateTotal()).toFixed(2)}
                   </span>
                 </div>
               </div>
