@@ -70,11 +70,11 @@ export async function GET(request: Request) {
         .eq('check_out', checkoutDate);
     } else if (forHousekeeping === 'true' && date) {
       // For housekeeping: get entries where guest is staying on this date
-      // check_in <= date AND check_out > date AND status is active
+      // check_in <= date AND check_out >= date AND status is active
       query = query
         .eq('status', 'active')
         .lte('check_in', date)
-        .gt('check_out', date);
+        .gte('check_out', date);
     } else if (date) {
       query = query.eq('date', date);
     } else if (year) {

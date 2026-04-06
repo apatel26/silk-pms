@@ -184,10 +184,14 @@ export default function HousekeepingPage() {
     // Build debug info
     const debugInfo: string[] = [];
     debugInfo.push(`Date: ${selectedDate}`);
-    debugInfo.push(`Staying guests: ${stayingEntries.length}`);
     stayingEntries.forEach(e => {
-      const daysSince = dayjs(selectedDate).diff(dayjs(e.check_in), 'day');
-      debugInfo.push(`Room ${e.room_number}: check-in ${e.check_in}, checkout ${e.check_out}, day ${daysSince}`);
+      const checkIn = dayjs(e.check_in);
+      const checkOut = dayjs(e.check_out);
+      const today = dayjs(selectedDate);
+      const daysSince = today.diff(checkIn, 'day');
+      const isCheckoutDay = today.isSame(checkOut, 'day');
+      const isDue = daysSince >= 2 && daysSince % 2 === 0;
+      debugInfo.push(`Room ${e.room_number}: in=${e.check_in}, out=${e.check_out}, day#${daysSince}, checkout=${isCheckoutDay}, due=${isDue}`);
     });
 
     let count = 0;
