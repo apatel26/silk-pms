@@ -251,7 +251,7 @@ export default function EntriesPage() {
         resetForm();
         fetchEntries();
       } else {
-        alert('Failed to save entry. Please try again.');
+        alert('Failed to save entry. Please try again.\n\nIf the problem persists, please refresh the page.');
       }
     } catch (error) {
       console.error('Error saving entry:', error);

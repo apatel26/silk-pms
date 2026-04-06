@@ -195,11 +195,14 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error:', error);
+      return NextResponse.json({ error: 'Failed to create entry', details: error }, { status: 500 });
+    }
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('Error creating entry:', error);
-    return NextResponse.json({ error: 'Failed to create entry' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create entry', details: String(error) }, { status: 500 });
   }
 }
