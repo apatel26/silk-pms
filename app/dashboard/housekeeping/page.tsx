@@ -513,97 +513,68 @@ export default function HousekeepingPage() {
 
       {/* Print Header - Only shows when printing */}
       <div className="hidden print:block">
-        <div className="text-center mb-4">
-          <h1 className="text-2xl font-bold">American Inn & RV Park</h1>
-          <h2 className="text-lg">Housekeeping - {dayjs(selectedDate).format('MM/DD/YYYY')}</h2>
+        <div className="text-center mb-2">
+          <h1 className="text-lg font-bold">American Inn & RV Park - Housekeeping</h1>
+          <h2 className="text-sm">{dayjs(selectedDate).format('MM/DD/YYYY')}</h2>
         </div>
 
-        {/* Room Status Table */}
-        <table className="w-full border-collapse border border-black mb-6">
+        {/* Room Status + Towel Table */}
+        <table className="w-full border-collapse border border-black text-xs">
           <thead>
             <tr className="bg-slate-200">
-              <th className="border border-black p-2 text-left">Room</th>
-              <th className="border border-black p-2 text-left">Status</th>
-              <th className="border border-black p-2 text-left">B</th>
-              <th className="border border-black p-2 text-left">H</th>
-              <th className="border border-black p-2 text-left">F</th>
-              <th className="border border-black p-2 text-left">BM</th>
-              <th className="border border-black p-2 text-left">Notes</th>
+              <th className="border border-black p-1 text-center">Rm</th>
+              <th className="border border-black p-1 text-center">Status</th>
+              <th className="border border-black p-1 text-center">B</th>
+              <th className="border border-black p-1 text-center">H</th>
+              <th className="border border-black p-1 text-center">F</th>
+              <th className="border border-black p-1 text-center">BM</th>
+              <th className="border border-black p-1 text-center">Rm</th>
+              <th className="border border-black p-1 text-center">Status</th>
+              <th className="border border-black p-1 text-center">B</th>
+              <th className="border border-black p-1 text-center">H</th>
+              <th className="border border-black p-1 text-center">F</th>
+              <th className="border border-black p-1 text-center">BM</th>
             </tr>
           </thead>
           <tbody>
-            {GUEST_ROOMS.map((roomNum) => {
-              const status = getRoomStatus(roomNum);
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => {
+              const room1 = GUEST_ROOMS[i];
+              const room2 = GUEST_ROOMS[i + 12];
+              const status1 = getRoomStatus(room1);
+              const status2 = room2 ? getRoomStatus(room2) : null;
               return (
-                <tr key={roomNum}>
-                  <td className="border border-black p-2 font-bold">{roomNum}</td>
-                  <td className="border border-black p-2">
-                    [  ] Clean  [  ] Dirty  [  ] Skip
-                  </td>
-                  <td className="border border-black p-2 w-10"></td>
-                  <td className="border border-black p-2 w-10"></td>
-                  <td className="border border-black p-2 w-10"></td>
-                  <td className="border border-black p-2 w-10"></td>
-                  <td className="border border-black p-2"></td>
+                <tr key={i}>
+                  <td className="border border-black p-1 text-center font-bold">{room1}</td>
+                  <td className="border border-black p-1 text-center">{status1.charAt(0).toUpperCase()}</td>
+                  <td className="border border-black p-1 text-center w-6"></td>
+                  <td className="border border-black p-1 text-center w-6"></td>
+                  <td className="border border-black p-1 text-center w-6"></td>
+                  <td className="border border-black p-1 text-center w-6"></td>
+                  {room2 ? (
+                    <>
+                      <td className="border border-black p-1 text-center font-bold">{room2}</td>
+                      <td className="border border-black p-1 text-center">{status2!.charAt(0).toUpperCase()}</td>
+                      <td className="border border-black p-1 text-center w-6"></td>
+                      <td className="border border-black p-1 text-center w-6"></td>
+                      <td className="border border-black p-1 text-center w-6"></td>
+                      <td className="border border-black p-1 text-center w-6"></td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="border border-black p-1"></td>
+                      <td className="border border-black p-1"></td>
+                      <td className="border border-black p-1"></td>
+                      <td className="border border-black p-1"></td>
+                      <td className="border border-black p-1"></td>
+                      <td className="border border-black p-1"></td>
+                    </>
+                  )}
                 </tr>
               );
             })}
           </tbody>
         </table>
-
-        {/* Towel Summary */}
-        <div className="mb-4">
-          <h3 className="text-lg font-bold mb-2">Towel Inventory</h3>
-          <table className="w-full border-collapse border border-black">
-            <thead>
-              <tr className="bg-slate-200">
-                <th className="border border-black p-2">Room</th>
-                <th className="border border-black p-2">B</th>
-                <th className="border border-black p-2">H</th>
-                <th className="border border-black p-2">F</th>
-                <th className="border border-black p-2">BM</th>
-                <th className="border border-black p-2">Room</th>
-                <th className="border border-black p-2">B</th>
-                <th className="border border-black p-2">H</th>
-                <th className="border border-black p-2">F</th>
-                <th className="border border-black p-2">BM</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => {
-                const room1 = GUEST_ROOMS[i];
-                const room2 = GUEST_ROOMS[i + 12];
-                return (
-                  <tr key={i}>
-                    <td className="border border-black p-2 font-bold">{room1}</td>
-                    <td className="border border-black p-2 w-10"></td>
-                    <td className="border border-black p-2 w-10"></td>
-                    <td className="border border-black p-2 w-10"></td>
-                    <td className="border border-black p-2 w-10"></td>
-                    {room2 ? (
-                      <>
-                        <td className="border border-black p-2 font-bold">{room2}</td>
-                        <td className="border border-black p-2 w-10"></td>
-                        <td className="border border-black p-2 w-10"></td>
-                        <td className="border border-black p-2 w-10"></td>
-                        <td className="border border-black p-2 w-10"></td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                      </>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <p className="text-sm mt-2">B = Bath Towel | H = Hand Towel | F = Face Towel | BM = Bath Mat</p>
-        </div>
+        <p className="text-xs mt-1">B=Bath Towel H=Hand Towel F=Face Towel BM=Bath Mat | Status: C=Cleaned P=Pending S=Skip O=Occupied</p>
       </div>
 
       {/* Legend */}
@@ -637,7 +608,6 @@ export default function HousekeepingPage() {
           #printable-area { border: none !important; background: white !important; padding: 0 !important; }
           #printable-area button { display: none; }
           * { color: black !important; }
-          table { font-size: 12px; }
           .border-black { border-color: black !important; }
           .bg-slate-200 { background-color: #e5e5e5 !important; }
         }
