@@ -540,7 +540,7 @@ export default function HousekeepingPage() {
                   return (
                     <tr key={roomNum} className="border-b border-black">
                       <td className="border border-black p-1 text-center font-bold">{roomNum}</td>
-                      <td className="border border-black p-1 text-center">{status === 'occupied' ? 'D' : status.charAt(0).toUpperCase()}</td>
+                      <td className="border border-black p-1 text-center">{status === 'occupied' ? 'O' : status.charAt(0).toUpperCase()}</td>
                       <td className="border border-black p-1 text-center w-6"></td>
                       <td className="border border-black p-1 text-center w-6"></td>
                       <td className="border border-black p-1 text-center w-6"></td>
@@ -575,7 +575,7 @@ export default function HousekeepingPage() {
                   return (
                     <tr key={roomNum} className="border-b border-black">
                       <td className="border border-black p-1 text-center font-bold">{roomNum}</td>
-                      <td className="border border-black p-1 text-center">{status === 'occupied' ? 'D' : status.charAt(0).toUpperCase()}</td>
+                      <td className="border border-black p-1 text-center">{status === 'occupied' ? 'O' : status.charAt(0).toUpperCase()}</td>
                       <td className="border border-black p-1 text-center w-6"></td>
                       <td className="border border-black p-1 text-center w-6"></td>
                       <td className="border border-black p-1 text-center w-6"></td>
@@ -587,7 +587,7 @@ export default function HousekeepingPage() {
             </table>
           </div>
         </div>
-        <p className="text-xs mt-1">B=Bath Towel H=Hand Towel F=Face Towel BM=Bath Mat | Status: C=Cleaned P=Pending S=Skip D=Dirty</p>
+        <p className="text-xs mt-1">B=Bath Towel H=Hand Towel F=Face Towel BM=Bath Mat | Status: C=Cleaned P=Pending S=Skip D=Dirty O=Occupied</p>
       </div>
 
       {/* Legend */}
