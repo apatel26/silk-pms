@@ -518,71 +518,75 @@ export default function HousekeepingPage() {
           <h2 className="text-sm">{dayjs(selectedDate).format('MM/DD/YYYY')}</h2>
         </div>
 
-        {/* Room Status + Towel Table */}
-        <table className="w-full border-collapse border border-black text-xs">
-          <thead>
-            <tr className="bg-slate-200">
-              <th className="border border-black p-1 text-center">Rm</th>
-              <th className="border border-black p-1 text-center">Status</th>
-              <th className="border border-black p-1 text-center">B</th>
-              <th className="border border-black p-1 text-center">H</th>
-              <th className="border border-black p-1 text-center">F</th>
-              <th className="border border-black p-1 text-center">BM</th>
-              <th className="border border-black p-1 text-center">Rm</th>
-              <th className="border border-black p-1 text-center">Status</th>
-              <th className="border border-black p-1 text-center">B</th>
-              <th className="border border-black p-1 text-center">H</th>
-              <th className="border border-black p-1 text-center">F</th>
-              <th className="border border-black p-1 text-center">BM</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => {
-              const room1 = GUEST_ROOMS[i];
-              const room2 = GUEST_ROOMS[i + 12];
-              const status1 = getRoomStatus(room1);
-              const status2 = room2 ? getRoomStatus(room2) : null;
-              const isLastOfFloor = i === 11;
-              return (
-                <>
-                  <tr key={i} className="border-b border-black">
-                    <td className="border border-black p-1 text-center font-bold">{room1}</td>
-                    <td className="border border-black p-1 text-center">{status1 === 'occupied' ? 'D' : status1.charAt(0).toUpperCase()}</td>
-                    <td className="border border-black p-1 text-center w-6"></td>
-                    <td className="border border-black p-1 text-center w-6"></td>
-                    <td className="border border-black p-1 text-center w-6"></td>
-                    <td className="border border-black p-1 text-center w-6"></td>
-                    {room2 ? (
-                      <>
-                        <td className="border border-black p-1 text-center font-bold">{room2}</td>
-                        <td className="border border-black p-1 text-center">{status2 === 'occupied' ? 'D' : status2!.charAt(0).toUpperCase()}</td>
-                        <td className="border border-black p-1 text-center w-6"></td>
-                        <td className="border border-black p-1 text-center w-6"></td>
-                        <td className="border border-black p-1 text-center w-6"></td>
-                        <td className="border border-black p-1 text-center w-6"></td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="border border-black p-1"></td>
-                        <td className="border border-black p-1"></td>
-                        <td className="border border-black p-1"></td>
-                        <td className="border border-black p-1"></td>
-                        <td className="border border-black p-1"></td>
-                        <td className="border border-black p-1"></td>
-                      </>
-                    )}
-                  </tr>
-                  {isLastOfFloor && (
-                    <tr key={'spacer-' + i} className="border-b border-black">
-                      <td colSpan={6} className="border border-black p-1 bg-slate-100">2nd Floor</td>
-                      <td colSpan={6} className="border border-black p-1 bg-slate-100"></td>
+        {/* Two tables side by side with gap */}
+        <div className="flex justify-between">
+          {/* Left Side - 1st Floor */}
+          <div className="w-[48%]">
+            <p className="text-xs font-bold mb-1">1st Floor</p>
+            <table className="w-full border-collapse border border-black text-xs">
+              <thead>
+                <tr className="bg-slate-200">
+                  <th className="border border-black p-1 text-center">Rm</th>
+                  <th className="border border-black p-1 text-center">St</th>
+                  <th className="border border-black p-1 text-center">B</th>
+                  <th className="border border-black p-1 text-center">H</th>
+                  <th className="border border-black p-1 text-center">F</th>
+                  <th className="border border-black p-1 text-center">BM</th>
+                </tr>
+              </thead>
+              <tbody>
+                {GUEST_ROOMS.slice(0, 12).map((roomNum) => {
+                  const status = getRoomStatus(roomNum);
+                  return (
+                    <tr key={roomNum} className="border-b border-black">
+                      <td className="border border-black p-1 text-center font-bold">{roomNum}</td>
+                      <td className="border border-black p-1 text-center">{status === 'occupied' ? 'D' : status.charAt(0).toUpperCase()}</td>
+                      <td className="border border-black p-1 text-center w-6"></td>
+                      <td className="border border-black p-1 text-center w-6"></td>
+                      <td className="border border-black p-1 text-center w-6"></td>
+                      <td className="border border-black p-1 text-center w-6"></td>
                     </tr>
-                  )}
-                </>
-              );
-            })}
-          </tbody>
-        </table>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Gap */}
+          <div className="w-[4%]"></div>
+
+          {/* Right Side - 2nd Floor */}
+          <div className="w-[48%]">
+            <p className="text-xs font-bold mb-1">2nd Floor</p>
+            <table className="w-full border-collapse border border-black text-xs">
+              <thead>
+                <tr className="bg-slate-200">
+                  <th className="border border-black p-1 text-center">Rm</th>
+                  <th className="border border-black p-1 text-center">St</th>
+                  <th className="border border-black p-1 text-center">B</th>
+                  <th className="border border-black p-1 text-center">H</th>
+                  <th className="border border-black p-1 text-center">F</th>
+                  <th className="border border-black p-1 text-center">BM</th>
+                </tr>
+              </thead>
+              <tbody>
+                {GUEST_ROOMS.slice(12).map((roomNum) => {
+                  const status = getRoomStatus(roomNum);
+                  return (
+                    <tr key={roomNum} className="border-b border-black">
+                      <td className="border border-black p-1 text-center font-bold">{roomNum}</td>
+                      <td className="border border-black p-1 text-center">{status === 'occupied' ? 'D' : status.charAt(0).toUpperCase()}</td>
+                      <td className="border border-black p-1 text-center w-6"></td>
+                      <td className="border border-black p-1 text-center w-6"></td>
+                      <td className="border border-black p-1 text-center w-6"></td>
+                      <td className="border border-black p-1 text-center w-6"></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
         <p className="text-xs mt-1">B=Bath Towel H=Hand Towel F=Face Towel BM=Bath Mat | Status: C=Cleaned P=Pending S=Skip D=Dirty</p>
       </div>
 
