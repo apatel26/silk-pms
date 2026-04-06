@@ -274,8 +274,8 @@ export default function EntriesPage() {
       subtotalForNights = rate;
     }
 
-    // Generate a single group_id for all rooms in this group
-    const groupId = formData.is_group && formData.group_rooms.length > 0 ? `group_${Date.now()}` : null;
+    // Generate a single group_id for all rooms in this group (use proper UUID format)
+    const groupId = formData.is_group && formData.group_rooms.length > 0 ? crypto.randomUUID() : null;
 
     const createPayload = (roomNum: string, isMainRoom: boolean) => {
       const subtotal = formData.entry_type === 'guest'

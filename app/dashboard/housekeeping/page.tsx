@@ -132,30 +132,86 @@ export default function HousekeepingPage() {
     }
   };
 
-  // Generate tasks for rooms that need cleaning (checkouts for selected date)
+  // Generate tasks for all rooms based on entries
+  // Housekeeping every other day for long-term guests:
+  // - Check-in day → dirty
+  // - Checkout day → dirty
+  // - Every other day from check-in (check-in + 2, +4, ...) → dirty
+  // - Otherwise active guest staying → occupied
+  // - No entries → cleaned
   const handleGenerateFromEntries = async () => {
-    // Fetch fresh entries checking out today
-    const res = await fetch(`/api/entries?checkout_date=${selectedDate}`);
-    let checkoutEntries: Entry[] = [];
-    if (res.ok) {
-      checkoutEntries = await res.json();
+    // Fetch active guests staying on this date (check_in <= date < check_out)
+    const stayingRes = await fetch(`/api/entries?housekeeping=true&date=${selectedDate}`);
+    let stayingEntries: Entry[] = [];
+    if (stayingRes.ok) {
+      stayingEntries = await stayingRes.json();
     }
-    const rooms = Array.from(new Set(checkoutEntries.map(e => parseInt(e.room_number!)))).filter(r => !isNaN(r));
+
+    // Also get checkout entries for today
+    const checkoutRes = await fetch(`/api/entries?checkout_date=${selectedDate}`);
+    let checkoutEntries: Entry[] = [];
+    if (checkoutRes.ok) {
+      checkoutEntries = await checkoutRes.json();
+    }
+
+    const roomsWithCheckouts = new Set(
+      checkoutEntries.map(e => parseInt(e.room_number!)).filter(r => !isNaN(r))
+    );
+    const roomsWithActiveGuests = new Set(
+      stayingEntries.filter(e => e.room_number).map(e => parseInt(e.room_number!))
+    );
+
+    // Helper: check if today is a "housekeeping due" day for long-term guest
+    // Due on: checkout day, and every 2nd day from check-in (starting day 2)
+    // NOT due on: check-in day (room was cleaned for guest arrival)
+    const isHousekeepingDue = (entry: Entry): boolean => {
+      const today = dayjs(selectedDate);
+      const checkIn = dayjs(entry.check_in);
+      const checkOut = dayjs(entry.check_out);
+
+      // Check if today is checkout day → dirty
+      if (today.isSame(checkOut, 'day')) return true;
+
+      // Check if today is every 2nd day from check-in (day 2, 4, 6, ...)
+      // NOT day 0 (check-in day) because room was cleaned for guest
+      const daysSinceCheckIn = today.diff(checkIn, 'day');
+      if (daysSinceCheckIn >= 2 && daysSinceCheckIn % 2 === 0) return true;
+
+      return false;
+    };
 
     let count = 0;
-    for (const roomNum of rooms) {
+    for (const roomNum of GUEST_ROOMS) {
       const existingTask = getTaskForRoom(roomNum);
+      let newStatus: 'dirty' | 'occupied' | 'cleaned';
+
+      if (roomsWithCheckouts.has(roomNum)) {
+        // Room is checking out today → dirty
+        newStatus = 'dirty';
+      } else if (roomsWithActiveGuests.has(roomNum)) {
+        // Room has active guest staying - check if housekeeping is due
+        const guestEntry = stayingEntries.find(
+          e => parseInt(e.room_number!) === roomNum
+        );
+        if (guestEntry && isHousekeepingDue(guestEntry)) {
+          newStatus = 'dirty'; // Due for cleaning
+        } else {
+          newStatus = 'occupied'; // Guest staying but not due
+        }
+      } else {
+        // No entries → cleaned
+        newStatus = 'cleaned';
+      }
+
       if (existingTask) {
-        // Update existing to dirty
         await fetch('/api/housekeeping', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ id: existingTask.id, status: 'dirty' }),
+          body: JSON.stringify({ id: existingTask.id, status: newStatus }),
         });
         count++;
       } else {
-        // Create new
         const res = await fetch('/api/housekeeping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -163,14 +219,14 @@ export default function HousekeepingPage() {
           body: JSON.stringify({
             date: selectedDate,
             room_number: String(roomNum),
-            status: 'dirty',
+            status: newStatus,
           }),
         });
         if (res.ok) count++;
       }
     }
     fetchData();
-    alert('Auto: Updated ' + count + ' tasks for rooms with checkouts today');
+    alert('Auto: Updated ' + count + ' rooms');
   };
 
   // Dirty All

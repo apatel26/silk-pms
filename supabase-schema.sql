@@ -4,21 +4,7 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Drop existing tables if they exist
-DROP TABLE IF EXISTS backup_records CASCADE;
-DROP TABLE IF EXISTS audit_log CASCADE;
-DROP TABLE IF EXISTS housekeeping_tasks CASCADE;
-DROP TABLE IF EXISTS extra_charges CASCADE;
-DROP TABLE IF EXISTS entries CASCADE;
-DROP TABLE IF EXISTS customers CASCADE;
-DROP TABLE IF EXISTS rv_sites CASCADE;
-DROP TABLE IF EXISTS rooms CASCADE;
-DROP TABLE IF EXISTS rate_plans CASCADE;
-DROP TABLE IF EXISTS roles CASCADE;
-DROP TABLE IF EXISTS property_settings CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
-
--- Property Settings
+-- Property Settings (CREATE IF NOT EXISTS to preserve data)
 CREATE TABLE property_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT DEFAULT 'American Inn and RV Park',
