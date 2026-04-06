@@ -39,14 +39,24 @@ interface Entry {
 }
 
 export default function ReportsPage() {
-  const currentMonth = dayjs().format('YYYY-MM');
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  const [selectedYear, setSelectedYear] = useState(dayjs().format('YYYY'));
-  const [reportType, setReportType] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
+  const currentYear = dayjs().format('YYYY');
+  const [reportType, setReportType] = useState<'monthly' | 'yearly'>('monthly');
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Generate list of months for dropdown (last 12 months)
+  // Generate list of years for dropdown (current year + 2 years back)
+  const getYearOptions = () => {
+    const options = [];
+    for (let i = 0; i <= 2; i++) {
+      const year = dayjs().subtract(i, 'year').format('YYYY');
+      options.push({ value: year, label: year });
+    }
+    return options;
+  };
+
+  // Generate list of months for dropdown
   const getMonthOptions = () => {
     const options = [];
     for (let i = 0; i < 12; i++) {
@@ -61,108 +71,149 @@ export default function ReportsPage() {
 
   useEffect(() => {
     fetchEntries();
-  }, [selectedMonth]);
+  }, [selectedYear, selectedMonth, reportType]);
 
   const fetchEntries = async () => {
+    setLoading(true);
     try {
-      const res = await fetch(`/api/entries?month=${selectedMonth}`);
+      let url = '/api/entries?';
+      if (reportType === 'yearly') {
+        url += `year=${selectedYear}`;
+      } else {
+        url += `month=${selectedMonth}`;
+      }
+
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        setEntries(data);
+        setEntries(Array.isArray(data) ? data : []);
+      } else {
+        console.error('Failed to fetch entries:', res.status);
+        setEntries([]);
       }
     } catch (error) {
       console.error('Error fetching entries:', error);
+      setEntries([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-
-
-
-  const getMonthlySummary = () => {
-    const guestEntries = entries.filter((e) => e.entry_type === 'guest' && e.status === 'active');
-    const rvEntries = entries.filter((e) => e.entry_type === 'rv' && e.status === 'active');
+  const getSummary = () => {
+    // For reports, show all entries (not just active) since we're reporting on historical data
+    const guestEntries = entries.filter((e) => e.entry_type === 'guest');
+    const rvEntries = entries.filter((e) => e.entry_type === 'rv');
+    const activeGuestEntries = guestEntries.filter((e) => e.status === 'active');
+    const activeRVEntries = rvEntries.filter((e) => e.status === 'active');
 
     return {
-      totalGuestRooms: guestEntries.length,
-      totalRVSites: rvEntries.length,
-      totalGuestRevenue: guestEntries.reduce((sum, e) => sum + e.subtotal, 0),
-      totalGuestTaxC: guestEntries.reduce((sum, e) => sum + e.tax_c, 0),
-      totalGuestTaxS: guestEntries.reduce((sum, e) => sum + e.tax_s, 0),
-      totalGuestPetFees: guestEntries.reduce((sum, e) => sum + e.pet_fee, 0),
+      totalGuestRooms: activeGuestEntries.length,
+      totalRVSites: activeRVEntries.length,
+      totalGuestRevenue: guestEntries.reduce((sum, e) => sum + (e.subtotal || 0), 0),
+      totalGuestTaxC: guestEntries.reduce((sum, e) => sum + (e.tax_c || 0), 0),
+      totalGuestTaxS: guestEntries.reduce((sum, e) => sum + (e.tax_s || 0), 0),
+      totalGuestPetFees: guestEntries.reduce((sum, e) => sum + (e.pet_fee || 0), 0),
       totalGuestExtra: guestEntries.reduce((sum, e) => sum + (e.extra_charges?.reduce((s, ec) => s + ec.amount, 0) || 0), 0),
-      totalGuest: guestEntries.reduce((sum, e) => sum + e.total, 0),
-      totalRV: rvEntries.reduce((sum, e) => sum + e.total, 0),
+      totalGuest: guestEntries.reduce((sum, e) => sum + (e.total || 0), 0),
+      totalRV: rvEntries.reduce((sum, e) => sum + (e.total || 0), 0),
       totalCash: entries.reduce((sum, e) => sum + (e.cash || 0), 0),
       totalCC: entries.reduce((sum, e) => sum + (e.cc || 0), 0),
-      totalRefunds: entries.filter((e) => e.is_refund).reduce((sum, e) => sum + e.total, 0),
-      netTotal: entries.reduce((sum, e) => sum + e.total, 0),
+      totalRefunds: entries.filter((e) => e.is_refund).reduce((sum, e) => sum + Math.abs(e.total || 0), 0),
+      netTotal: entries.reduce((sum, e) => sum + (e.total || 0), 0),
     };
   };
 
-  const summary = getMonthlySummary();
+  const summary = getSummary();
 
   const exportToExcel = () => {
     setLoading(true);
     try {
       const wb = XLSX.utils.book_new();
-      const monthName = dayjs(selectedMonth + '-01').format('MMMM YYYY');
-      const year = selectedMonth.split('-')[0];
-      const daysInMonth = dayjs(selectedMonth + '-01').daysInMonth();
+      const title = reportType === 'yearly'
+        ? `American Inn and RV Park - ${selectedYear} Annual Report`
+        : `American Inn and RV Park - ${dayjs(selectedMonth + '-01').format('MMMM YYYY')}`;
+      const dateRange = reportType === 'yearly' ? `Year: ${selectedYear}` : `Month: ${dayjs(selectedMonth + '-01').format('MMMM YYYY')}`;
 
-      // Create daily data array
-      const dailyData: any[] = [];
+      // Summary sheet
+      const summaryData: any[] = [];
+      summaryData.push([title]);
+      summaryData.push([dateRange]);
+      summaryData.push([]);
+      summaryData.push(['GUEST ROOMS']);
+      summaryData.push(['Total Rooms Sold', summary.totalGuestRooms]);
+      summaryData.push(['Total Guest Revenue', `$${summary.totalGuestRevenue.toFixed(2)}`]);
+      summaryData.push(['City Tax (7%)', `$${summary.totalGuestTaxC.toFixed(2)}`]);
+      summaryData.push(['State Tax (6%)', `$${summary.totalGuestTaxS.toFixed(2)}`]);
+      summaryData.push(['Pet Fees', `$${summary.totalGuestPetFees.toFixed(2)}`]);
+      summaryData.push(['Extra Charges', `$${summary.totalGuestExtra.toFixed(2)}`]);
+      summaryData.push(['Total Guest Revenue', `$${summary.totalGuest.toFixed(2)}`]);
+      summaryData.push([]);
+      summaryData.push(['RV SITES']);
+      summaryData.push(['Total RV Sites Used', summary.totalRVSites]);
+      summaryData.push(['Total RV Revenue', `$${summary.totalRV.toFixed(2)}`]);
+      summaryData.push([]);
+      summaryData.push(['PAYMENT SUMMARY']);
+      summaryData.push(['Total Cash', `$${summary.totalCash.toFixed(2)}`]);
+      summaryData.push(['Total Credit Card', `$${summary.totalCC.toFixed(2)}`]);
+      summaryData.push(['Refunds', `$${summary.totalRefunds.toFixed(2)}`]);
+      summaryData.push(['NET TOTAL', `$${summary.netTotal.toFixed(2)}`]);
 
-      // Title row
-      dailyData.push([`American Inn and RV Park - ${monthName}`]);
-      dailyData.push([`Date: ${monthName}`, '', '', '', '', '', '', '', '', '', '', 'Month of ________________________________']);
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
-      // Guest Rooms header
-      dailyData.push([
-        'Room#', 'Name', 'In', 'Out', 'Rate', 'Tx-C7%', 'Tx-S6%', 'Total', 'Cash', 'CC',
-        '', 'Guest Rooms', '', '', '', '', '', '', '', 'RV', '', '', '', 'TOTALS'
-      ]);
+      // Guest entries detail
+      const guestData: any[] = [];
+      guestData.push(['Room #', 'Date', 'Guest Name', 'Check In', 'Check Out', 'Nights', 'Rate', 'Subtotal', 'Tax C', 'Tax S', 'Pet Fee', 'Extra', 'Total', 'Cash', 'CC', 'Status']);
+      entries.filter(e => e.entry_type === 'guest').forEach(e => {
+        guestData.push([
+          e.room_number || '',
+          e.date,
+          e.customer_name || '',
+          e.check_in || '',
+          e.check_out || '',
+          e.num_nights || 1,
+          `$${(e.room_rate || 0).toFixed(2)}`,
+          `$${(e.subtotal || 0).toFixed(2)}`,
+          `$${(e.tax_c || 0).toFixed(2)}`,
+          `$${(e.tax_s || 0).toFixed(2)}`,
+          `$${(e.pet_fee || 0).toFixed(2)}`,
+          `$${(e.extra_charges?.reduce((s, ec) => s + ec.amount, 0) || 0).toFixed(2)}`,
+          `$${(e.total || 0).toFixed(2)}`,
+          `$${(e.cash || 0).toFixed(2)}`,
+          `$${(e.cc || 0).toFixed(2)}`,
+          e.status
+        ]);
+      });
 
-      // Process each day of the month
-      for (let day = 1; day <= daysInMonth; day++) {
-        const date = dayjs(`${selectedMonth}-${day.toString().padStart(2, '0')}`).format('YYYY-MM-DD');
-        const dayEntries = entries.filter((e) => e.date === date);
+      const wsGuest = XLSX.utils.aoa_to_sheet(guestData);
+      XLSX.utils.book_append_sheet(wb, wsGuest, 'Guest Rooms');
 
-        // For each room, check if there's an entry
-        GUEST_ROOMS.forEach((roomNum) => {
-          const entry = dayEntries.find((e) => e.entry_type === 'guest' && e.room_number === String(roomNum));
+      // RV entries detail
+      const rvData: any[] = [];
+      rvData.push(['Site #', 'Date', 'Guest Name', 'Check In', 'Check Out', 'Nights', 'Rate', 'Total', 'Cash', 'CC', 'Status']);
+      entries.filter(e => e.entry_type === 'rv').forEach(e => {
+        rvData.push([
+          e.site_number || '',
+          e.date,
+          e.customer_name || '',
+          e.check_in || '',
+          e.check_out || '',
+          e.num_nights || 1,
+          `$${(e.room_rate || 0).toFixed(2)}`,
+          `$${(e.total || 0).toFixed(2)}`,
+          `$${(e.cash || 0).toFixed(2)}`,
+          `$${(e.cc || 0).toFixed(2)}`,
+          e.status
+        ]);
+      });
 
-          if (entry) {
-            dailyData.push([
-              roomNum,
-              entry.customer_name || '',
-              entry.check_in ? dayjs(entry.check_in).format('M/D') : '',
-              entry.check_out ? dayjs(entry.check_out).format('M/D') : '',
-              entry.room_rate,
-              entry.tax_c,
-              entry.tax_s,
-              entry.subtotal,
-              entry.cash || '',
-              entry.cc || '',
-            ]);
-          }
-        });
-      }
+      const wsRV = XLSX.utils.aoa_to_sheet(rvData);
+      XLSX.utils.book_append_sheet(wb, wsRV, 'RV Sites');
 
-      // Totals row
-      dailyData.push([
-        '', '', 'TOTAL', '',
-        summary.totalGuestRevenue,
-        summary.totalGuestTaxC,
-        summary.totalGuestTaxS,
-        summary.totalGuest,
-        summary.totalCash,
-        summary.totalCC,
-      ]);
-
-      const ws = XLSX.utils.aoa_to_sheet(dailyData);
-      XLSX.utils.book_append_sheet(wb, ws, monthName.substring(0, 3));
-
-      XLSX.writeFile(wb, `American_Inn_${monthName.replace(' ', '_')}.xlsx`);
+      const fileName = reportType === 'yearly'
+        ? `American_Inn_${selectedYear}_Annual_Report.xlsx`
+        : `American_Inn_${dayjs(selectedMonth + '-01').format('MMMM_YYYY')}_Report.xlsx`;
+      XLSX.writeFile(wb, fileName);
     } catch (error) {
       console.error('Error exporting Excel:', error);
       alert('Error exporting Excel file');
@@ -175,22 +226,19 @@ export default function ReportsPage() {
     setLoading(true);
     try {
       const doc = new jsPDF();
-      const monthName = dayjs(selectedMonth + '-01').format('MMMM YYYY');
+      const title = reportType === 'yearly'
+        ? `American Inn and RV Park - ${selectedYear} Annual Report`
+        : `American Inn and RV Park - ${dayjs(selectedMonth + '-01').format('MMMM YYYY')} Report`;
 
       // Title
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text('American Inn and RV Park', 105, 20, { align: 'center' });
-
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Monthly Report - ${monthName}`, 105, 30, { align: 'center' });
+      doc.text(title, 105, 20, { align: 'center' });
 
       // Summary Section
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text('Summary', 14, 45);
-
+      doc.text('Summary', 14, 40);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
 
@@ -200,14 +248,15 @@ export default function ReportsPage() {
         `City Tax (7%): $${summary.totalGuestTaxC.toFixed(2)}`,
         `State Tax (6%): $${summary.totalGuestTaxS.toFixed(2)}`,
         `Pet Fees: $${summary.totalGuestPetFees.toFixed(2)}`,
+        `Extra Charges: $${summary.totalGuestExtra.toFixed(2)}`,
         `Total Cash: $${summary.totalCash.toFixed(2)}`,
         `Total Credit Card: $${summary.totalCC.toFixed(2)}`,
-        `Refunds: $${Math.abs(summary.totalRefunds).toFixed(2)}`,
-        `Net Total: $${summary.netTotal.toFixed(2)}`,
+        `Refunds: $${summary.totalRefunds.toFixed(2)}`,
+        `NET TOTAL: $${summary.netTotal.toFixed(2)}`,
       ];
 
       summaryLines.forEach((line, i) => {
-        doc.text(line, 14, 55 + i * 7);
+        doc.text(line, 14, 50 + i * 7);
       });
 
       // Guest Rooms Table
@@ -217,9 +266,9 @@ export default function ReportsPage() {
 
       const guestRows = GUEST_ROOMS.map((roomNum) => {
         const roomEntries = entries.filter(
-          (e) => e.entry_type === 'guest' && e.room_number === String(roomNum) && e.status === 'active'
+          (e) => e.entry_type === 'guest' && e.room_number === String(roomNum)
         );
-        const totalRate = roomEntries.reduce((sum, e) => sum + e.room_rate, 0);
+        const totalRate = roomEntries.reduce((sum, e) => sum + (e.subtotal || 0), 0);
         const totalCash = roomEntries.reduce((sum, e) => sum + (e.cash || 0), 0);
         const totalCC = roomEntries.reduce((sum, e) => sum + (e.cc || 0), 0);
         return [roomNum, roomEntries.length, `$${totalRate.toFixed(2)}`, `$${totalCash.toFixed(2)}`, `$${totalCC.toFixed(2)}`];
@@ -227,8 +276,8 @@ export default function ReportsPage() {
 
       autoTable(doc, {
         startY: 135,
-        head: [['Room #', 'Stays', 'Total Rate', 'Cash', 'CC']],
-        body: guestRows,
+        head: [['Room #', 'Stays', 'Total Revenue', 'Cash', 'CC']],
+        body: guestRows.filter(row => Number(row[1]) > 0),
         theme: 'striped',
         headStyles: { fillColor: [45, 93, 47] },
       });
@@ -241,16 +290,16 @@ export default function ReportsPage() {
 
       const rvRows = RV_SITES.map((siteNum) => {
         const siteEntries = entries.filter(
-          (e) => e.entry_type === 'rv' && e.site_number === String(siteNum) && e.status === 'active'
+          (e) => e.entry_type === 'rv' && e.site_number === String(siteNum)
         );
-        const totalRate = siteEntries.reduce((sum, e) => sum + e.room_rate, 0);
+        const totalRate = siteEntries.reduce((sum, e) => sum + (e.total || 0), 0);
         return [`RV # ${siteNum}`, siteEntries.length, `$${totalRate.toFixed(2)}`];
       });
 
       autoTable(doc, {
         startY: finalY + 20,
-        head: [['Site #', 'Stays', 'Total Rate']],
-        body: rvRows,
+        head: [['Site #', 'Stays', 'Total Revenue']],
+        body: rvRows.filter(row => Number(row[1]) > 0),
         theme: 'striped',
         headStyles: { fillColor: [59, 130, 246] },
       });
@@ -265,12 +314,39 @@ export default function ReportsPage() {
         { align: 'center' }
       );
 
-      doc.save(`American_Inn_Report_${monthName.replace(' ', '_')}.pdf`);
+      const fileName = reportType === 'yearly'
+        ? `American_Inn_${selectedYear}_Annual_Report.pdf`
+        : `American_Inn_${dayjs(selectedMonth + '-01').format('MMMM_YYYY')}_Report.pdf`;
+      doc.save(fileName);
     } catch (error) {
       console.error('Error exporting PDF:', error);
       alert('Error exporting PDF file');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleYearlyReset = async () => {
+    if (!confirm('This will create a backup of all entries and clear all data for the current year. Continue?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'yearly', year: selectedYear }),
+      });
+
+      if (res.ok) {
+        alert('Yearly reset completed successfully.');
+        fetchEntries();
+      } else {
+        alert('Failed to reset. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error during yearly reset:', error);
+      alert('Error during reset: ' + String(error));
     }
   };
 
@@ -290,7 +366,7 @@ export default function ReportsPage() {
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Report Type</label>
             <div className="flex gap-2">
-              {(['monthly', 'weekly', 'daily'] as const).map((type) => (
+              {(['monthly', 'yearly'] as const).map((type) => (
                 <button
                   key={type}
                   onClick={() => setReportType(type)}
@@ -307,10 +383,21 @@ export default function ReportsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              {reportType === 'monthly' ? 'Month' : reportType === 'weekly' ? 'Week Starting' : 'Date'}
-            </label>
-            {reportType === 'monthly' ? (
+            <label className="block text-sm font-medium text-slate-300 mb-2">Year</label>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              {getYearOptions().map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {reportType === 'monthly' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Month</label>
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
@@ -320,40 +407,31 @@ export default function ReportsPage() {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-            ) : reportType === 'weekly' ? (
-              <input
-                type="date"
-                value={selectedMonth + '-01'}
-                onChange={(e) => setSelectedMonth(dayjs(e.target.value).format('YYYY-MM'))}
-                className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-            ) : (
-              <input
-                type="date"
-                value={selectedMonth + '-01'}
-                onChange={(e) => setSelectedMonth(dayjs(e.target.value).format('YYYY-MM-DD'))}
-                className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-            )}
-          </div>
+            </div>
+          )}
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Year</label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-            >
-              {[2024, 2025, 2026, 2027].map((year) => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
+        {reportType === 'yearly' && (
+          <p className="mt-4 text-sm text-amber-400">
+            Showing all entries for {selectedYear} (all months combined)
+          </p>
+        )}
+
+        <div className="mt-4 flex items-center gap-4">
+          <button
+            onClick={fetchEntries}
+            className="px-4 py-2 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-600/20 hover:bg-blue-600/20 transition"
+          >
+            Refresh Data
+          </button>
+          <span className="text-sm text-slate-400">
+            {entries.length} entries found
+          </span>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
         <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
           <p className="text-sm text-slate-400">Total Revenue</p>
           <p className="text-3xl font-bold text-amber-400">${summary.netTotal.toFixed(2)}</p>
@@ -375,6 +453,10 @@ export default function ReportsPage() {
           <p className="text-2xl font-bold text-white">{summary.totalRVSites}</p>
         </div>
         <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <p className="text-sm text-slate-400">Total Entries</p>
+          <p className="text-2xl font-bold text-white">{entries.length}</p>
+        </div>
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
           <p className="text-sm text-slate-400">Cash</p>
           <p className="text-2xl font-bold text-green-400">${summary.totalCash.toFixed(2)}</p>
         </div>
@@ -384,7 +466,7 @@ export default function ReportsPage() {
         </div>
         <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
           <p className="text-sm text-slate-400">Refunds</p>
-          <p className="text-2xl font-bold text-red-400">${Math.abs(summary.totalRefunds).toFixed(2)}</p>
+          <p className="text-2xl font-bold text-red-400">${summary.totalRefunds.toFixed(2)}</p>
         </div>
       </div>
 
@@ -416,7 +498,9 @@ export default function ReportsPage() {
           </svg>
           <div className="text-left">
             <p className="font-semibold text-white">Export to Excel</p>
-            <p className="text-sm text-slate-400">Download {dayjs(selectedMonth + '-01').format('MMMM YYYY')} data</p>
+            <p className="text-sm text-slate-400">
+              {reportType === 'yearly' ? `${selectedYear} Annual Report` : dayjs(selectedMonth + '-01').format('MMMM YYYY')}
+            </p>
           </div>
         </button>
 
@@ -435,35 +519,71 @@ export default function ReportsPage() {
         </button>
       </div>
 
-      {/* Reset Section */}
+      {/* Yearly Reset Section */}
       <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-        <h3 className="text-lg font-semibold text-white mb-4">System Reset</h3>
+        <h3 className="text-lg font-semibold text-white mb-4">Yearly Reset</h3>
         <p className="text-sm text-slate-400 mb-4">
-          Yearly reset creates a backup of all data before clearing entries. Factory reset deletes everything.
+          Yearly reset creates a backup of all {selectedYear} entries before clearing them. Use this at the end of the year.
         </p>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <button
-            onClick={() => {
-              if (confirm('This will create a backup and clear all entries for the year. Continue?')) {
-                alert('Yearly reset would create backup and clear data.');
-              }
-            }}
-            className="px-4 py-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition"
-          >
-            Yearly Reset
-          </button>
-          <button
-            onClick={() => {
-              if (confirm('Factory reset will delete ALL data including users and settings. This cannot be undone!')) {
-                alert('Factory reset would delete all data.');
-              }
-            }}
-            className="px-4 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition"
-          >
-            Factory Reset
-          </button>
-        </div>
+        <button
+          onClick={handleYearlyReset}
+          className="px-4 py-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition"
+        >
+          Reset {selectedYear} Data
+        </button>
       </div>
+
+      {/* Entries Table */}
+      {entries.length > 0 && (
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+          <h3 className="text-lg font-semibold text-white mb-4">All Entries</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-white">
+              <thead>
+                <tr className="border-b border-slate-700">
+                  <th className="text-left p-2">Date</th>
+                  <th className="text-left p-2">Type</th>
+                  <th className="text-left p-2">Room/Site</th>
+                  <th className="text-left p-2">Guest Name</th>
+                  <th className="text-left p-2">Check In</th>
+                  <th className="text-left p-2">Check Out</th>
+                  <th className="text-right p-2">Nights</th>
+                  <th className="text-right p-2">Total</th>
+                  <th className="text-left p-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.slice(0, 50).map((entry) => (
+                  <tr key={entry.id} className="border-b border-slate-800">
+                    <td className="p-2">{entry.date}</td>
+                    <td className="p-2">{entry.entry_type === 'guest' ? 'Room' : 'RV'}</td>
+                    <td className="p-2">{entry.room_number || entry.site_number || '-'}</td>
+                    <td className="p-2">{entry.customer_name || '-'}</td>
+                    <td className="p-2">{entry.check_in || '-'}</td>
+                    <td className="p-2">{entry.check_out || '-'}</td>
+                    <td className="p-2 text-right">{entry.num_nights || 1}</td>
+                    <td className="p-2 text-right">${(entry.total || 0).toFixed(2)}</td>
+                    <td className="p-2">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        entry.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                        entry.status === 'checked_out' ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-red-500/20 text-red-400'
+                      }`}>
+                        {entry.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {entries.length > 50 && (
+              <p className="text-center text-slate-400 mt-4">
+                Showing 50 of {entries.length} entries
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

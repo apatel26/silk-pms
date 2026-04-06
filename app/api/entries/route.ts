@@ -52,6 +52,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
     const month = searchParams.get('month');
+    const year = searchParams.get('year');
     const forHousekeeping = searchParams.get('housekeeping');
     const checkoutDate = searchParams.get('checkout_date');
 
@@ -76,8 +77,18 @@ export async function GET(request: Request) {
         .gt('check_out', date);
     } else if (date) {
       query = query.eq('date', date);
+    } else if (year) {
+      // Yearly report: get all entries for a specific year
+      const yearStart = `${year}-01-01`;
+      const yearEnd = `${year}-12-31`;
+      query = query.gte('date', yearStart).lte('date', yearEnd);
     } else if (month) {
-      query = query.like('date', `${month}%`);
+      // Monthly report: get all entries for a specific month
+      const [y, m] = month.split('-');
+      const monthStart = `${y}-${m}-01`;
+      const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
+      const monthEnd = `${y}-${m}-${lastDay}`;
+      query = query.gte('date', monthStart).lte('date', monthEnd);
     }
 
     const { data, error } = await query;
