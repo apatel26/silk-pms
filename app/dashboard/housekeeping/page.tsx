@@ -52,9 +52,10 @@ export default function HousekeepingPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
+      const timestamp = Date.now();
       const [tasksRes, entriesRes] = await Promise.all([
-        fetch(`/api/housekeeping?date=${selectedDate}`),
-        fetch(`/api/entries?date=${selectedDate}&housekeeping=true`)
+        fetch(`/api/housekeeping?date=${selectedDate}&_=${timestamp}`),
+        fetch(`/api/entries?date=${selectedDate}&housekeeping=true&_=${timestamp}`)
       ]);
 
       if (tasksRes.ok) {
@@ -196,25 +197,24 @@ export default function HousekeepingPage() {
 
     let count = 0;
     const updateResults: string[] = [];
+    const updatedTasks = [...tasks];
+
     for (const roomNum of GUEST_ROOMS) {
       const existingTask = getTaskForRoom(roomNum);
       let newStatus: 'dirty' | 'occupied' | 'cleaned';
 
       if (roomsWithCheckouts.has(roomNum)) {
-        // Room is checking out today → dirty
         newStatus = 'dirty';
       } else if (roomsWithActiveGuests.has(roomNum)) {
-        // Room has active guest staying - check if housekeeping is due
         const guestEntry = stayingEntries.find(
           e => parseInt(e.room_number!) === roomNum
         );
         if (guestEntry && isHousekeepingDue(guestEntry)) {
-          newStatus = 'dirty'; // Due for cleaning
+          newStatus = 'dirty';
         } else {
-          newStatus = 'occupied'; // Guest staying but not due
+          newStatus = 'occupied';
         }
       } else {
-        // No entries → cleaned
         newStatus = 'cleaned';
       }
 
@@ -228,8 +228,12 @@ export default function HousekeepingPage() {
         if (res.ok) {
           count++;
           updateResults.push(`Room ${roomNum}: ${existingTask.status} → ${newStatus} ✓`);
+          const idx = updatedTasks.findIndex(t => t.id === existingTask.id);
+          if (idx !== -1) {
+            updatedTasks[idx] = { ...updatedTasks[idx], status: newStatus };
+          }
         } else {
-          updateResults.push(`Room ${roomNum}: FAILED to update to ${newStatus}`);
+          updateResults.push(`Room ${roomNum}: FAILED`);
         }
       } else {
         const res = await fetch('/api/housekeeping', {
@@ -246,11 +250,12 @@ export default function HousekeepingPage() {
           count++;
           updateResults.push(`Room ${roomNum}: created → ${newStatus} ✓`);
         } else {
-          updateResults.push(`Room ${roomNum}: FAILED to create ${newStatus}`);
+          updateResults.push(`Room ${roomNum}: FAILED`);
         }
       }
     }
-    fetchData();
+
+    setTasks(updatedTasks);
     alert('Auto: Updated ' + count + ' rooms\n\n' + debugInfo.join('\n') + '\n\n' + updateResults.join('\n'));
   };
 
