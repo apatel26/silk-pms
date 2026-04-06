@@ -905,7 +905,11 @@ export default function EntriesPage() {
                     <input
                       type="number"
                       value={ec.amount}
-                      onChange={(e) => updateExtraCharge(index, 'amount', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const parsed = parseFloat(val);
+                        updateExtraCharge(index, 'amount', isNaN(parsed) ? 0 : parsed);
+                      }}
                       className={`w-24 px-4 py-2 rounded-lg border text-white focus:outline-none focus:ring-2 ${
                         ec.amount < 0 ? 'bg-red-500/20 border-red-500/50 text-red-400 focus:ring-red-500' : 'bg-slate-800 border-slate-700 focus:ring-amber-500'
                       }`}

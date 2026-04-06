@@ -22,11 +22,31 @@ interface Entry {
   status: string;
 }
 
+interface TowelForm {
+  [roomNum: number]: {
+    B: string;
+    H: string;
+    F: string;
+    BM: string;
+  };
+}
+
 export default function HousekeepingPage() {
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [tasks, setTasks] = useState<HousekeepingTask[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [towelForm, setTowelForm] = useState<TowelForm>({});
+  const [showTowelForm, setShowTowelForm] = useState(false);
+
+  // Initialize towel form for all rooms
+  useEffect(() => {
+    const initial: TowelForm = {};
+    GUEST_ROOMS.forEach(r => {
+      initial[r] = { B: '', H: '', F: '', BM: '' };
+    });
+    setTowelForm(initial);
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -289,6 +309,16 @@ export default function HousekeepingPage() {
     }
   };
 
+  const updateTowelForm = (roomNum: number, field: 'B' | 'H' | 'F' | 'BM', value: string) => {
+    setTowelForm(prev => ({
+      ...prev,
+      [roomNum]: {
+        ...prev[roomNum],
+        [field]: value,
+      },
+    }));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -296,12 +326,30 @@ export default function HousekeepingPage() {
           <h1 className="text-2xl font-bold text-white">Housekeeping</h1>
           <p className="text-slate-400">Click a room to cycle its status</p>
         </div>
-        <button
-          onClick={handlePrint}
-          className="px-4 py-2 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-600/20 hover:bg-blue-600/20 transition flex items-center gap-2"
-        >
-          Print
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowTowelForm(!showTowelForm)}
+            className={`px-4 py-2 rounded-lg border transition flex items-center gap-2 ${
+              showTowelForm
+                ? 'bg-blue-600/10 text-blue-400 border-blue-600/20'
+                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Towel Form
+          </button>
+          <button
+            onClick={handlePrint}
+            className="px-4 py-2 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-600/20 hover:bg-blue-600/20 transition flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Print
+          </button>
+        </div>
       </div>
 
       {/* Date Selection */}
@@ -408,11 +456,153 @@ export default function HousekeepingPage() {
         )}
       </div>
 
-      {/* Print Header */}
+      {/* Towel Form Section */}
+      {showTowelForm && (
+        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800 print:hidden">
+          <h3 className="text-lg font-semibold text-white mb-4">Towel Inventory - Fill in quantities used</h3>
+          <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-2">
+            {GUEST_ROOMS.map((roomNum) => (
+              <div key={roomNum} className="text-center">
+                <div className="text-white font-bold text-sm mb-1">{roomNum}</div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-slate-400 w-5">B</span>
+                    <input
+                      type="text"
+                      value={towelForm[roomNum]?.B || ''}
+                      onChange={(e) => updateTowelForm(roomNum, 'B', e.target.value)}
+                      className="w-8 h-6 text-center text-sm bg-slate-800 border border-slate-600 text-white rounded"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-slate-400 w-5">H</span>
+                    <input
+                      type="text"
+                      value={towelForm[roomNum]?.H || ''}
+                      onChange={(e) => updateTowelForm(roomNum, 'H', e.target.value)}
+                      className="w-8 h-6 text-center text-sm bg-slate-800 border border-slate-600 text-white rounded"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-slate-400 w-5">F</span>
+                    <input
+                      type="text"
+                      value={towelForm[roomNum]?.F || ''}
+                      onChange={(e) => updateTowelForm(roomNum, 'F', e.target.value)}
+                      className="w-8 h-6 text-center text-sm bg-slate-800 border border-slate-600 text-white rounded"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-slate-400 w-5">BM</span>
+                    <input
+                      type="text"
+                      value={towelForm[roomNum]?.BM || ''}
+                      onChange={(e) => updateTowelForm(roomNum, 'BM', e.target.value)}
+                      className="w-8 h-6 text-center text-sm bg-slate-800 border border-slate-600 text-white rounded"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 text-xs text-slate-400">
+            <p>B = Bath Towel | H = Hand Towel | F = Face Towel | BM = Bath Mat</p>
+          </div>
+        </div>
+      )}
+
+      {/* Print Header - Only shows when printing */}
       <div className="hidden print:block">
-        <div className="text-center mb-6">
+        <div className="text-center mb-4">
           <h1 className="text-2xl font-bold">American Inn & RV Park</h1>
-          <h2 className="text-xl">Housekeeping - {dayjs(selectedDate).format('MM/DD/YYYY')}</h2>
+          <h2 className="text-lg">Housekeeping - {dayjs(selectedDate).format('MM/DD/YYYY')}</h2>
+        </div>
+
+        {/* Room Status Table */}
+        <table className="w-full border-collapse border border-black mb-6">
+          <thead>
+            <tr className="bg-slate-200">
+              <th className="border border-black p-2 text-left">Room</th>
+              <th className="border border-black p-2 text-left">Status</th>
+              <th className="border border-black p-2 text-left">B</th>
+              <th className="border border-black p-2 text-left">H</th>
+              <th className="border border-black p-2 text-left">F</th>
+              <th className="border border-black p-2 text-left">BM</th>
+              <th className="border border-black p-2 text-left">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {GUEST_ROOMS.map((roomNum) => {
+              const status = getRoomStatus(roomNum);
+              return (
+                <tr key={roomNum}>
+                  <td className="border border-black p-2 font-bold">{roomNum}</td>
+                  <td className="border border-black p-2">
+                    [  ] Clean  [  ] Dirty  [  ] Skip
+                  </td>
+                  <td className="border border-black p-2 w-10"></td>
+                  <td className="border border-black p-2 w-10"></td>
+                  <td className="border border-black p-2 w-10"></td>
+                  <td className="border border-black p-2 w-10"></td>
+                  <td className="border border-black p-2"></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {/* Towel Summary */}
+        <div className="mb-4">
+          <h3 className="text-lg font-bold mb-2">Towel Inventory</h3>
+          <table className="w-full border-collapse border border-black">
+            <thead>
+              <tr className="bg-slate-200">
+                <th className="border border-black p-2">Room</th>
+                <th className="border border-black p-2">B</th>
+                <th className="border border-black p-2">H</th>
+                <th className="border border-black p-2">F</th>
+                <th className="border border-black p-2">BM</th>
+                <th className="border border-black p-2">Room</th>
+                <th className="border border-black p-2">B</th>
+                <th className="border border-black p-2">H</th>
+                <th className="border border-black p-2">F</th>
+                <th className="border border-black p-2">BM</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => {
+                const room1 = GUEST_ROOMS[i];
+                const room2 = GUEST_ROOMS[i + 12];
+                return (
+                  <tr key={i}>
+                    <td className="border border-black p-2 font-bold">{room1}</td>
+                    <td className="border border-black p-2 w-10"></td>
+                    <td className="border border-black p-2 w-10"></td>
+                    <td className="border border-black p-2 w-10"></td>
+                    <td className="border border-black p-2 w-10"></td>
+                    {room2 ? (
+                      <>
+                        <td className="border border-black p-2 font-bold">{room2}</td>
+                        <td className="border border-black p-2 w-10"></td>
+                        <td className="border border-black p-2 w-10"></td>
+                        <td className="border border-black p-2 w-10"></td>
+                        <td className="border border-black p-2 w-10"></td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="border border-black p-2"></td>
+                        <td className="border border-black p-2"></td>
+                        <td className="border border-black p-2"></td>
+                        <td className="border border-black p-2"></td>
+                        <td className="border border-black p-2"></td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="text-sm mt-2">B = Bath Towel | H = Hand Towel | F = Face Towel | BM = Bath Mat</p>
         </div>
       </div>
 
@@ -445,8 +635,11 @@ export default function HousekeepingPage() {
           .print\\:hidden { display: none !important; }
           .print\\:block { display: block !important; }
           #printable-area { border: none !important; background: white !important; padding: 0 !important; }
-          #printable-area button { border: 1px solid #ccc !important; background: white !important; }
-          #printable-area button span { color: black !important; }
+          #printable-area button { display: none; }
+          * { color: black !important; }
+          table { font-size: 12px; }
+          .border-black { border-color: black !important; }
+          .bg-slate-200 { background-color: #e5e5e5 !important; }
         }
       `}</style>
     </div>
