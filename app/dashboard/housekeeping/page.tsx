@@ -89,15 +89,15 @@ export default function HousekeepingPage() {
   };
 
   // Single click = cycle status (only cycles through valid DB statuses)
-  // Valid statuses: pending, cleaned, skip (out_of_order not in DB yet)
+  // Valid statuses: dirty, cleaned, skip, occupied
   const handleRoomClick = async (roomNum: number) => {
     const task = getTaskForRoom(roomNum);
-    const currentStatus = task?.status || 'pending';
-    // Cycle: pending -> cleaned -> skip -> pending
+    const currentStatus = task?.status || 'dirty';
+    // Cycle: dirty -> cleaned -> skip -> dirty
     const nextStatus: HousekeepingTask['status'] =
-      currentStatus === 'pending' ? 'cleaned' :
+      currentStatus === 'dirty' ? 'cleaned' :
       currentStatus === 'cleaned' ? 'skip' :
-      'pending';
+      'dirty';
 
     try {
       let res;
@@ -146,12 +146,12 @@ export default function HousekeepingPage() {
     for (const roomNum of rooms) {
       const existingTask = getTaskForRoom(roomNum);
       if (existingTask) {
-        // Update existing to pending
+        // Update existing to dirty
         await fetch('/api/housekeeping', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ id: existingTask.id, status: 'pending' }),
+          body: JSON.stringify({ id: existingTask.id, status: 'dirty' }),
         });
         count++;
       } else {
@@ -163,7 +163,7 @@ export default function HousekeepingPage() {
           body: JSON.stringify({
             date: selectedDate,
             room_number: String(roomNum),
-            status: 'pending',
+            status: 'dirty',
           }),
         });
         if (res.ok) count++;
@@ -173,8 +173,8 @@ export default function HousekeepingPage() {
     alert('Auto: Updated ' + count + ' tasks for rooms with checkouts today');
   };
 
-  // Pending All
-  const handlePendingAll = async () => {
+  // Dirty All
+  const handleDirtyAll = async () => {
     let count = 0;
     for (const roomNum of GUEST_ROOMS) {
       const existingTask = getTaskForRoom(roomNum);
@@ -183,7 +183,7 @@ export default function HousekeepingPage() {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ id: existingTask.id, status: 'pending' }),
+          body: JSON.stringify({ id: existingTask.id, status: 'dirty' }),
         });
         count++;
       } else {
@@ -194,14 +194,14 @@ export default function HousekeepingPage() {
           body: JSON.stringify({
             date: selectedDate,
             room_number: String(roomNum),
-            status: 'pending',
+            status: 'dirty',
           }),
         });
         if (res.ok) count++;
       }
     }
     fetchData();
-    alert('Pending All: Updated ' + count + ' rooms');
+    alert('Dirty All: Updated ' + count + ' rooms');
   };
 
   // Skip All
@@ -274,20 +274,20 @@ export default function HousekeepingPage() {
 
   // Count stats based on ALL rooms, not just tasks
   // Default to "cleaned" unless there's an active guest or a specific task
-  const getRoomStatus = (roomNum: number): 'occupied' | 'cleaned' | 'pending' | 'skip' => {
+  const getRoomStatus = (roomNum: number): 'occupied' | 'cleaned' | 'dirty' | 'skip' => {
     const task = getTaskForRoom(roomNum);
     const hasActiveGuest = entries.some(
       e => e.room_number === String(roomNum) && e.status === 'active'
     );
     if (hasActiveGuest) return 'occupied';
     if (!task) return 'cleaned'; // Default to cleaned
-    return task.status;
+    return task.status as 'occupied' | 'cleaned' | 'dirty' | 'skip';
   };
 
   const stats = {
     occupied: entries.filter(e => e.status === 'active' && e.room_number).length,
     cleaned: GUEST_ROOMS.filter(r => getRoomStatus(r) === 'cleaned').length,
-    pending: GUEST_ROOMS.filter(r => getRoomStatus(r) === 'pending').length,
+    dirty: GUEST_ROOMS.filter(r => getRoomStatus(r) === 'dirty').length,
     skipped: GUEST_ROOMS.filter(r => getRoomStatus(r) === 'skip').length,
   };
 
@@ -295,6 +295,7 @@ export default function HousekeepingPage() {
     switch (status) {
       case 'occupied': return 'bg-blue-500/20 border-blue-500';
       case 'cleaned': return 'bg-green-500/20 border-green-500';
+      case 'dirty': return 'bg-orange-500/20 border-orange-500';
       case 'skip': return 'bg-yellow-500/20 border-yellow-500';
       default: return 'bg-slate-700/50 border-slate-600';
     }
@@ -304,6 +305,7 @@ export default function HousekeepingPage() {
     switch (status) {
       case 'occupied': return '●';
       case 'cleaned': return '✓';
+      case 'dirty': return '○';
       case 'skip': return '—';
       default: return '○';
     }
@@ -385,7 +387,7 @@ export default function HousekeepingPage() {
           <div className="flex items-center gap-4 text-sm">
             <span className="text-blue-400">● {stats.occupied}</span>
             <span className="text-green-400">✓ {stats.cleaned}</span>
-            <span className="text-slate-400">○ {stats.pending}</span>
+            <span className="text-orange-400">○ {stats.dirty}</span>
             <span className="text-yellow-400">— {stats.skipped}</span>
           </div>
         </div>
@@ -399,10 +401,10 @@ export default function HousekeepingPage() {
             Auto ({roomsNeedingCleaning.length})
           </button>
           <button
-            onClick={handlePendingAll}
+            onClick={handleDirtyAll}
             className="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 text-sm"
           >
-            Pending All
+            Dirty All
           </button>
           <button
             onClick={handleCleanAll}
@@ -440,10 +442,10 @@ export default function HousekeepingPage() {
                     ${getStatusColor(status)}
                   `}
                 >
-                  <span className={`text-lg font-bold ${status === 'occupied' ? 'text-blue-400' : status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : 'text-white'}`}>
+                  <span className={`text-lg font-bold ${status === 'occupied' ? 'text-blue-400' : status === 'cleaned' ? 'text-green-400' : status === 'dirty' ? 'text-orange-400' : status === 'skip' ? 'text-yellow-400' : 'text-white'}`}>
                     {roomNum}
                   </span>
-                  <span className={`text-xl ${status === 'occupied' ? 'text-blue-400' : status === 'cleaned' ? 'text-green-400' : status === 'skip' ? 'text-yellow-400' : 'text-slate-500'}`}>
+                  <span className={`text-xl ${status === 'occupied' ? 'text-blue-400' : status === 'cleaned' ? 'text-green-400' : status === 'dirty' ? 'text-orange-400' : status === 'skip' ? 'text-yellow-400' : 'text-slate-500'}`}>
                     {getStatusIcon(status)}
                   </span>
                   {roomNum >= 201 && (
@@ -526,12 +528,12 @@ export default function HousekeepingPage() {
             <table className="w-full border-collapse border border-black text-xs">
               <thead>
                 <tr className="bg-slate-200">
-                  <th className="border border-black p-1 text-center">Rm</th>
-                  <th className="border border-black p-1 text-center">St</th>
-                  <th className="border border-black p-1 text-center">B</th>
-                  <th className="border border-black p-1 text-center">H</th>
-                  <th className="border border-black p-1 text-center">F</th>
-                  <th className="border border-black p-1 text-center">BM</th>
+                  <th className="border border-black p-1 text-center w-8">Rm</th>
+                  <th className="border border-black p-1 text-center w-4">St</th>
+                  <th className="border border-black p-1 text-center w-8">B</th>
+                  <th className="border border-black p-1 text-center w-8">H</th>
+                  <th className="border border-black p-1 text-center w-8">F</th>
+                  <th className="border border-black p-1 text-center w-8">BM</th>
                 </tr>
               </thead>
               <tbody>
@@ -540,11 +542,11 @@ export default function HousekeepingPage() {
                   return (
                     <tr key={roomNum} className="border-b border-black">
                       <td className="border border-black p-1 text-center font-bold">{roomNum}</td>
-                      <td className="border border-black p-1 text-center">{status === 'occupied' ? 'O' : status.charAt(0).toUpperCase()}</td>
-                      <td className="border border-black p-1 text-center w-6"></td>
-                      <td className="border border-black p-1 text-center w-6"></td>
-                      <td className="border border-black p-1 text-center w-6"></td>
-                      <td className="border border-black p-1 text-center w-6"></td>
+                      <td className="border border-black p-1 text-center">{status === 'occupied' ? 'O' : status === 'dirty' ? 'D' : status.charAt(0).toUpperCase()}</td>
+                      <td className="border border-black p-1 text-center w-8 h-8"></td>
+                      <td className="border border-black p-1 text-center w-8 h-8"></td>
+                      <td className="border border-black p-1 text-center w-8 h-8"></td>
+                      <td className="border border-black p-1 text-center w-8 h-8"></td>
                     </tr>
                   );
                 })}
@@ -561,12 +563,12 @@ export default function HousekeepingPage() {
             <table className="w-full border-collapse border border-black text-xs">
               <thead>
                 <tr className="bg-slate-200">
-                  <th className="border border-black p-1 text-center">Rm</th>
-                  <th className="border border-black p-1 text-center">St</th>
-                  <th className="border border-black p-1 text-center">B</th>
-                  <th className="border border-black p-1 text-center">H</th>
-                  <th className="border border-black p-1 text-center">F</th>
-                  <th className="border border-black p-1 text-center">BM</th>
+                  <th className="border border-black p-1 text-center w-8">Rm</th>
+                  <th className="border border-black p-1 text-center w-4">St</th>
+                  <th className="border border-black p-1 text-center w-8">B</th>
+                  <th className="border border-black p-1 text-center w-8">H</th>
+                  <th className="border border-black p-1 text-center w-8">F</th>
+                  <th className="border border-black p-1 text-center w-8">BM</th>
                 </tr>
               </thead>
               <tbody>
@@ -575,11 +577,11 @@ export default function HousekeepingPage() {
                   return (
                     <tr key={roomNum} className="border-b border-black">
                       <td className="border border-black p-1 text-center font-bold">{roomNum}</td>
-                      <td className="border border-black p-1 text-center">{status === 'occupied' ? 'O' : status.charAt(0).toUpperCase()}</td>
-                      <td className="border border-black p-1 text-center w-6"></td>
-                      <td className="border border-black p-1 text-center w-6"></td>
-                      <td className="border border-black p-1 text-center w-6"></td>
-                      <td className="border border-black p-1 text-center w-6"></td>
+                      <td className="border border-black p-1 text-center">{status === 'occupied' ? 'O' : status === 'dirty' ? 'D' : status.charAt(0).toUpperCase()}</td>
+                      <td className="border border-black p-1 text-center w-8 h-8"></td>
+                      <td className="border border-black p-1 text-center w-8 h-8"></td>
+                      <td className="border border-black p-1 text-center w-8 h-8"></td>
+                      <td className="border border-black p-1 text-center w-8 h-8"></td>
                     </tr>
                   );
                 })}
@@ -587,12 +589,12 @@ export default function HousekeepingPage() {
             </table>
           </div>
         </div>
-        <p className="text-xs mt-1">B=Bath Towel H=Hand Towel F=Face Towel BM=Bath Mat | Status: C=Cleaned P=Pending S=Skip D=Dirty O=Occupied</p>
+        <p className="text-xs mt-1">B=Bath Towel H=Hand Towel F=Face Towel BM=Bath Mat | Status: C=Cleaned D=Dirty S=Skip O=Occupied</p>
       </div>
 
       {/* Legend */}
       <div className="bg-slate-900 rounded-xl p-6 border border-slate-800 print:hidden">
-        <h3 className="text-sm font-semibold text-white mb-3">Click room to cycle: Pending → Cleaned → Skip → Pending (Occupied rooms can't be changed)</h3>
+        <h3 className="text-sm font-semibold text-white mb-3">Click room to cycle: Dirty → Cleaned → Skip → Dirty (Occupied rooms can't be changed)</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div className="flex items-center gap-2">
             <span className="w-8 h-8 rounded bg-blue-500/20 border-2 border-blue-500/50 flex items-center justify-center text-blue-400 font-bold">●</span>
@@ -603,12 +605,12 @@ export default function HousekeepingPage() {
             <span className="text-white">Cleaned</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded bg-yellow-500/20 border-2 border-yellow-500/50 flex items-center justify-center text-yellow-400 font-bold">—</span>
-            <span className="text-white">Skipped</span>
+            <span className="w-8 h-8 rounded bg-orange-500/20 border-2 border-orange-500/50 flex items-center justify-center text-orange-400 font-bold">○</span>
+            <span className="text-white">Dirty</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded bg-slate-700/50 border-2 border-slate-600 flex items-center justify-center text-slate-400 font-bold">○</span>
-            <span className="text-white">Pending</span>
+            <span className="w-8 h-8 rounded bg-yellow-500/20 border-2 border-yellow-500/50 flex items-center justify-center text-yellow-400 font-bold">—</span>
+            <span className="text-white">Skipped</span>
           </div>
         </div>
       </div>
