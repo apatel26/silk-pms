@@ -253,13 +253,14 @@ export default function HousekeepingPage() {
   const roomsNeedingCleaning = getRoomsNeedingCleaning();
 
   // Count stats based on ALL rooms, not just tasks
+  // Default to "cleaned" unless there's an active guest or a specific task
   const getRoomStatus = (roomNum: number): 'occupied' | 'cleaned' | 'pending' | 'skip' => {
     const task = getTaskForRoom(roomNum);
     const hasActiveGuest = entries.some(
       e => e.room_number === String(roomNum) && e.status === 'active'
     );
     if (hasActiveGuest) return 'occupied';
-    if (!task) return 'pending';
+    if (!task) return 'cleaned'; // Default to cleaned
     return task.status;
   };
 

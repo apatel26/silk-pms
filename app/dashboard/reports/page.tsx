@@ -39,11 +39,25 @@ interface Entry {
 }
 
 export default function ReportsPage() {
-  const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
+  const currentMonth = dayjs().format('YYYY-MM');
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(dayjs().format('YYYY'));
   const [reportType, setReportType] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Generate list of months for dropdown (last 12 months)
+  const getMonthOptions = () => {
+    const options = [];
+    for (let i = 0; i < 12; i++) {
+      const date = dayjs().subtract(i, 'month');
+      options.push({
+        value: date.format('YYYY-MM'),
+        label: date.format('MMMM YYYY'),
+      });
+    }
+    return options;
+  };
 
   useEffect(() => {
     fetchEntries();
@@ -297,12 +311,15 @@ export default function ReportsPage() {
               {reportType === 'monthly' ? 'Month' : reportType === 'weekly' ? 'Week Starting' : 'Date'}
             </label>
             {reportType === 'monthly' ? (
-              <input
-                type="month"
+              <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
+              >
+                {getMonthOptions().map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             ) : reportType === 'weekly' ? (
               <input
                 type="date"

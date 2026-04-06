@@ -184,6 +184,9 @@ export default function EntriesPage() {
           : formData.custom_pet_fee * formData.pet_count * numNights)
       : 0;
 
+    // Generate a single group_id for all rooms in this group
+    const groupId = formData.is_group && formData.group_rooms.length > 0 ? `group_${Date.now()}` : null;
+
     const createPayload = (roomNum: string, isMainRoom: boolean) => ({
       entry_type: formData.entry_type,
       date: formData.date,
@@ -205,41 +208,54 @@ export default function EntriesPage() {
       is_refund: formData.is_refund,
       refund_amount: formData.is_refund ? formData.refund_amount : 0,
       status: 'active',
-      group_id: formData.is_group && formData.group_rooms.length > 0 ? `group_${Date.now()}` : null,
+      group_id: groupId,
       is_group_main: isMainRoom ? true : false,
     });
 
     try {
+      let success = false;
+
       if (editingEntry) {
-        await fetch(`/api/entries/${editingEntry.id}`, {
+        const res = await fetch(`/api/entries/${editingEntry.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(createPayload(formData.room_number, true)),
         });
+        success = res.ok;
       } else {
         // Create main room entry
-        await fetch('/api/entries', {
+        const mainRes = await fetch('/api/entries', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(createPayload(formData.room_number, true)),
         });
+        success = mainRes.ok;
 
         // Create group room entries
-        if (formData.is_group && formData.group_rooms.length > 0) {
+        if (success && formData.is_group && formData.group_rooms.length > 0) {
           for (const groupRoom of formData.group_rooms) {
-            await fetch('/api/entries', {
+            const groupRes = await fetch('/api/entries', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(createPayload(groupRoom, false)),
             });
+            if (!groupRes.ok) {
+              success = false;
+              break;
+            }
           }
         }
       }
 
-      resetForm();
-      fetchEntries();
+      if (success) {
+        resetForm();
+        fetchEntries();
+      } else {
+        alert('Failed to save entry. Please try again.');
+      }
     } catch (error) {
       console.error('Error saving entry:', error);
+      alert('Error saving entry: ' + String(error));
     }
   };
 
