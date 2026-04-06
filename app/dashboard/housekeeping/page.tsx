@@ -9,7 +9,7 @@ interface HousekeepingTask {
   id: string;
   date: string;
   room_number: string;
-  status: 'pending' | 'cleaned' | 'skip';
+  status: 'dirty' | 'cleaned' | 'skip' | 'occupied';
   notes: string | null;
   assigned_to: string | null;
   created_at: string;
@@ -94,7 +94,7 @@ export default function HousekeepingPage() {
     const task = getTaskForRoom(roomNum);
     const currentStatus = task?.status || 'dirty';
     // Cycle: dirty -> cleaned -> skip -> dirty
-    const nextStatus: HousekeepingTask['status'] =
+    const nextStatus =
       currentStatus === 'dirty' ? 'cleaned' :
       currentStatus === 'cleaned' ? 'skip' :
       'dirty';
