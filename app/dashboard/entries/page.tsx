@@ -41,6 +41,7 @@ interface FormData {
   room_number: string;
   site_number: string;
   customer_name: string;
+  // Guest fields
   rate_plan: 'standard' | 'custom';
   custom_rate: number;
   check_in: string;
@@ -48,6 +49,10 @@ interface FormData {
   pet_count: number;
   pet_fee_type: 'default' | 'custom';
   custom_pet_fee: number;
+  // RV fields
+  rv_type: '30amp' | '50amp';
+  rv_duration: 'daily' | 'weekly' | 'monthly';
+  // Common fields
   extra_charges: { description: string; amount: number }[];
   cash: number;
   cc: number;
@@ -79,6 +84,8 @@ export default function EntriesPage() {
     pet_count: 0,
     pet_fee_type: 'default',
     custom_pet_fee: 20,
+    rv_type: '30amp',
+    rv_duration: 'daily',
     extra_charges: [],
     cash: 0,
     cc: 0,
@@ -133,26 +140,44 @@ export default function EntriesPage() {
 
   const summary = getSummary();
 
-  const calculateTotal = () => {
-    const rate = formData.rate_plan === 'custom' ? formData.custom_rate : 70;
+  // RV rates from settings (no tax)
+  const RV_RATES = {
+    daily: { '30amp': 35, '50amp': 45 },
+    weekly: { '30amp': 200, '50amp': 230 },
+    monthly: { '30amp': 400, '50amp': 500 },
+  };
 
-    // Calculate number of nights
+  const calculateTotal = () => {
+    // Calculate number of nights for guests
     const checkIn = dayjs(formData.check_in);
     const checkOut = dayjs(formData.check_out);
     const nights = checkOut.diff(checkIn, 'day');
     const numNights = nights > 0 ? nights : 1;
 
-    // Calculate total for all nights
-    const subtotalForNights = rate * numNights;
-    const taxC = subtotalForNights * 0.07;
-    const taxS = subtotalForNights * 0.06;
-    const subtotal = subtotalForNights + taxC + taxS;
+    let rate = 0;
+    let subtotal = 0;
+    let taxC = 0;
+    let taxS = 0;
+    let petFee = 0;
 
-    const petFee = formData.pet_count > 0
-      ? (formData.pet_fee_type === 'default'
+    if (formData.entry_type === 'guest') {
+      // Guest room pricing (with tax)
+      rate = formData.rate_plan === 'custom' ? formData.custom_rate : 70;
+      const subtotalForNights = rate * numNights;
+      taxC = subtotalForNights * 0.07;
+      taxS = subtotalForNights * 0.06;
+      subtotal = subtotalForNights + taxC + taxS;
+
+      if (formData.pet_count > 0) {
+        petFee = formData.pet_fee_type === 'default'
           ? DEFAULT_PET_FEE * formData.pet_count * numNights
-          : formData.custom_pet_fee * formData.pet_count * numNights)
-      : 0;
+          : formData.custom_pet_fee * formData.pet_count * numNights;
+      }
+    } else {
+      // RV pricing (no tax)
+      rate = RV_RATES[formData.rv_duration][formData.rv_type];
+      subtotal = rate; // Flat rate based on duration
+    }
 
     // Extra charges can be positive (charge) or negative (credit/refund)
     const extraCharges = formData.extra_charges.reduce((sum, ec) => sum + ec.amount, 0);
@@ -161,49 +186,70 @@ export default function EntriesPage() {
   };
 
   const handleSubmit = async () => {
-    const rate = formData.rate_plan === 'custom' ? formData.custom_rate : 70;
-
-    // Calculate number of nights
+    // Calculate number of nights for guests
     const checkIn = dayjs(formData.check_in);
     const checkOut = dayjs(formData.check_out);
     const nights = checkOut.diff(checkIn, 'day');
     const numNights = nights > 0 ? nights : 1;
 
-    // Room rate is per night, but subtotal/total is for all nights
-    const subtotalForNights = rate * numNights;
-    const petFee = formData.pet_count > 0
-      ? (formData.pet_fee_type === 'default'
+    let rate = 0;
+    let subtotalForNights = 0;
+    let taxC = 0;
+    let taxS = 0;
+    let petFee = 0;
+
+    if (formData.entry_type === 'guest') {
+      // Guest room pricing (with tax)
+      rate = formData.rate_plan === 'custom' ? formData.custom_rate : 70;
+      subtotalForNights = rate * numNights;
+      taxC = subtotalForNights * 0.07;
+      taxS = subtotalForNights * 0.06;
+      if (formData.pet_count > 0) {
+        petFee = formData.pet_fee_type === 'default'
           ? DEFAULT_PET_FEE * formData.pet_count * numNights
-          : formData.custom_pet_fee * formData.pet_count * numNights)
-      : 0;
+          : formData.custom_pet_fee * formData.pet_count * numNights;
+      }
+    } else {
+      // RV pricing (no tax)
+      rate = RV_RATES[formData.rv_duration][formData.rv_type];
+      subtotalForNights = rate;
+    }
 
     // Generate a single group_id for all rooms in this group
     const groupId = formData.is_group && formData.group_rooms.length > 0 ? `group_${Date.now()}` : null;
 
-    const createPayload = (roomNum: string, isMainRoom: boolean) => ({
-      entry_type: formData.entry_type,
-      date: formData.date,
-      room_number: formData.entry_type === 'guest' ? roomNum : null,
-      site_number: formData.entry_type === 'rv' ? roomNum : null,
-      customer_name: formData.customer_name,
-      rate_plan_id: null,
-      check_in: formData.check_in || null,
-      check_out: formData.check_out || null,
-      room_rate: rate,
-      num_nights: numNights,
-      subtotal: subtotalForNights,
-      pet_fee: isMainRoom ? petFee : 0, // Only charge pet fee on main room
-      pet_count: isMainRoom ? formData.pet_count : 0,
-      extra_charges: isMainRoom ? formData.extra_charges : [],
-      cash: isMainRoom ? (formData.cash || null) : null,
-      cc: isMainRoom ? (formData.cc || null) : null,
-      note: formData.note || null,
-      is_refund: false,
-      refund_amount: 0,
-      status: 'active',
-      group_id: groupId,
-      is_group_main: isMainRoom ? true : false,
-    });
+    const createPayload = (roomNum: string, isMainRoom: boolean) => {
+      const subtotal = formData.entry_type === 'guest'
+        ? subtotalForNights + taxC + taxS
+        : subtotalForNights;
+
+      return {
+        entry_type: formData.entry_type,
+        date: formData.date,
+        room_number: formData.entry_type === 'guest' ? roomNum : null,
+        site_number: formData.entry_type === 'rv' ? roomNum : null,
+        customer_name: formData.customer_name,
+        rate_plan_id: null,
+        check_in: formData.check_in || null,
+        check_out: formData.check_out || null,
+        room_rate: rate,
+        num_nights: numNights,
+        subtotal,
+        tax_c: taxC,
+        tax_s: taxS,
+        pet_fee: isMainRoom ? petFee : 0,
+        pet_count: isMainRoom ? formData.pet_count : 0,
+        extra_charges: isMainRoom ? formData.extra_charges : [],
+        cash: isMainRoom ? (formData.cash || null) : null,
+        cc: isMainRoom ? (formData.cc || null) : null,
+        note: formData.note || null,
+        is_refund: false,
+        refund_amount: 0,
+        status: 'active',
+        group_id: groupId,
+        is_group_main: isMainRoom ? true : false,
+      };
+    };
 
     try {
       let success = false;
@@ -267,6 +313,8 @@ export default function EntriesPage() {
       pet_count: entry.pet_count,
       pet_fee_type: 'default',
       custom_pet_fee: 20,
+      rv_type: '30amp',
+      rv_duration: 'daily',
       extra_charges: entry.extra_charges || [],
       cash: entry.cash || 0,
       cc: entry.cc || 0,
@@ -294,6 +342,8 @@ export default function EntriesPage() {
       pet_count: 0,
       pet_fee_type: 'default',
       custom_pet_fee: 20,
+      rv_type: '30amp',
+      rv_duration: 'daily',
       extra_charges: [],
       cash: 0,
       cc: 0,
@@ -529,17 +579,88 @@ export default function EntriesPage() {
                   </select>
                 </div>
               ) : (
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">RV Site</label>
-                  <select
-                    value={formData.site_number}
-                    onChange={(e) => setFormData({ ...formData, site_number: e.target.value })}
-                    className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {RV_SITES.map((s) => (
-                      <option key={s} value={s}>RV Site {s}</option>
-                    ))}
-                  </select>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">RV Site</label>
+                    <select
+                      value={formData.site_number}
+                      onChange={(e) => setFormData({ ...formData, site_number: e.target.value })}
+                      className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {RV_SITES.map((s) => (
+                        <option key={s} value={s}>RV Site {s}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* RV Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">RV Type</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, rv_type: '30amp' })}
+                        className={`py-3 rounded-lg font-medium transition ${
+                          formData.rv_type === '30amp'
+                            ? 'bg-blue-500 text-slate-900'
+                            : 'bg-slate-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        30 Amp
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, rv_type: '50amp' })}
+                        className={`py-3 rounded-lg font-medium transition ${
+                          formData.rv_type === '50amp'
+                            ? 'bg-blue-500 text-slate-900'
+                            : 'bg-slate-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        50 Amp
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* RV Duration */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Stay Duration</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, rv_duration: 'daily' })}
+                        className={`py-2 rounded-lg font-medium transition text-sm ${
+                          formData.rv_duration === 'daily'
+                            ? 'bg-blue-500 text-slate-900'
+                            : 'bg-slate-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Daily<br/><span className="text-xs">${RV_RATES.daily[formData.rv_type]}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, rv_duration: 'weekly' })}
+                        className={`py-2 rounded-lg font-medium transition text-sm ${
+                          formData.rv_duration === 'weekly'
+                            ? 'bg-blue-500 text-slate-900'
+                            : 'bg-slate-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Weekly<br/><span className="text-xs">${RV_RATES.weekly[formData.rv_type]}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, rv_duration: 'monthly' })}
+                        className={`py-2 rounded-lg font-medium transition text-sm ${
+                          formData.rv_duration === 'monthly'
+                            ? 'bg-blue-500 text-slate-900'
+                            : 'bg-slate-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Monthly<br/><span className="text-xs">${RV_RATES.monthly[formData.rv_type]}</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
