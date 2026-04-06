@@ -51,7 +51,7 @@ interface FormData {
   custom_pet_fee: number;
   // RV fields
   rv_type: '30amp' | '50amp';
-  rv_duration: 'daily' | 'weekly' | 'monthly';
+  rv_duration: 'weekly' | 'monthly';
   // Common fields
   extra_charges: { description: string; amount: number }[];
   cash: number;
@@ -106,7 +106,7 @@ export default function EntriesPage() {
     pet_fee_type: 'default',
     custom_pet_fee: 20,
     rv_type: '30amp',
-    rv_duration: 'daily',
+    rv_duration: 'weekly',
     extra_charges: [],
     cash: 0,
     cc: 0,
@@ -119,6 +119,18 @@ export default function EntriesPage() {
     fetchEntries();
     fetchSettings();
   }, [selectedDate]);
+
+  // Auto-adjust check-out date when RV duration changes
+  const adjustRVDates = (duration: 'weekly' | 'monthly') => {
+    const checkIn = dayjs(formData.check_in);
+    let checkOut;
+    if (duration === 'weekly') {
+      checkOut = checkIn.add(7, 'day');
+    } else {
+      checkOut = checkIn.add(1, 'month');
+    }
+    setFormData({ ...formData, rv_duration: duration, check_out: checkOut.format('YYYY-MM-DD') });
+  };
 
   const fetchSettings = async () => {
     try {
@@ -186,11 +198,8 @@ export default function EntriesPage() {
   const summary = getSummary();
 
   // Get RV rate based on type, duration, and settings
-  const getRVRate = (duration: 'daily' | 'weekly' | 'monthly', ampType: '30amp' | '50amp') => {
-    if (duration === 'daily') {
-      // Daily rates are calculated differently - assume $35 for 30amp, $45 for 50amp as default daily
-      return ampType === '30amp' ? 35 : 45;
-    } else if (duration === 'weekly') {
+  const getRVRate = (duration: 'weekly' | 'monthly', ampType: '30amp' | '50amp') => {
+    if (duration === 'weekly') {
       return ampType === '30amp' ? settings.weekly_30amp : settings.weekly_50amp;
     } else {
       return ampType === '30amp' ? settings.monthly_30amp : settings.monthly_50amp;
@@ -364,7 +373,7 @@ export default function EntriesPage() {
       pet_fee_type: 'default',
       custom_pet_fee: 20,
       rv_type: '30amp',
-      rv_duration: 'daily',
+      rv_duration: 'weekly',
       extra_charges: entry.extra_charges || [],
       cash: entry.cash || 0,
       cc: entry.cc || 0,
@@ -393,7 +402,7 @@ export default function EntriesPage() {
       pet_fee_type: 'default',
       custom_pet_fee: 20,
       rv_type: '30amp',
-      rv_duration: 'daily',
+      rv_duration: 'weekly',
       extra_charges: [],
       cash: 0,
       cc: 0,
@@ -675,22 +684,11 @@ export default function EntriesPage() {
                   {/* RV Duration */}
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Stay Duration</label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
-                        onClick={() => setFormData({ ...formData, rv_duration: 'daily' })}
-                        className={`py-2 rounded-lg font-medium transition text-sm ${
-                          formData.rv_duration === 'daily'
-                            ? 'bg-blue-500 text-slate-900'
-                            : 'bg-slate-800 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        Daily<br/><span className="text-xs">${getRVRate('daily', formData.rv_type)}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, rv_duration: 'weekly' })}
-                        className={`py-2 rounded-lg font-medium transition text-sm ${
+                        onClick={() => adjustRVDates('weekly')}
+                        className={`py-3 rounded-lg font-medium transition ${
                           formData.rv_duration === 'weekly'
                             ? 'bg-blue-500 text-slate-900'
                             : 'bg-slate-800 text-slate-400 hover:text-white'
@@ -700,8 +698,8 @@ export default function EntriesPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setFormData({ ...formData, rv_duration: 'monthly' })}
-                        className={`py-2 rounded-lg font-medium transition text-sm ${
+                        onClick={() => adjustRVDates('monthly')}
+                        className={`py-3 rounded-lg font-medium transition ${
                           formData.rv_duration === 'monthly'
                             ? 'bg-blue-500 text-slate-900'
                             : 'bg-slate-800 text-slate-400 hover:text-white'
@@ -710,6 +708,9 @@ export default function EntriesPage() {
                         Monthly<br/><span className="text-xs">${getRVRate('monthly', formData.rv_type)}</span>
                       </button>
                     </div>
+                    <p className="text-xs text-slate-400 mt-2">
+                      {formData.rv_duration === 'weekly' ? 'Check-out: ' + dayjs(formData.check_in).add(7, 'day').format('MM/DD/YYYY') : 'Check-out: ' + dayjs(formData.check_in).add(1, 'month').format('MM/DD/YYYY')}
+                    </p>
                   </div>
                 </div>
               )}
