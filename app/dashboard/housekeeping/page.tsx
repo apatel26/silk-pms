@@ -135,9 +135,9 @@ export default function HousekeepingPage() {
 
   // Generate tasks for all rooms based on entries
   // Housekeeping every other day for long-term guests:
-  // - Check-in day → dirty
+  // - Check-in day → occupied (room was cleaned before guest arrived)
   // - Checkout day → dirty
-  // - Every other day from check-in (check-in + 2, +4, ...) → dirty
+  // - Every 2nd day from check-in (day 2, 4, 6...) → dirty
   // - Otherwise active guest staying → occupied
   // - No entries → cleaned
   const handleGenerateFromEntries = async () => {
@@ -147,6 +147,7 @@ export default function HousekeepingPage() {
     if (stayingRes.ok) {
       stayingEntries = await stayingRes.json();
     }
+    console.log('Staying entries for', selectedDate, ':', stayingEntries);
 
     // Also get checkout entries for today
     const checkoutRes = await fetch(`/api/entries?checkout_date=${selectedDate}`);
@@ -170,14 +171,24 @@ export default function HousekeepingPage() {
       const checkIn = dayjs(entry.check_in);
       const checkOut = dayjs(entry.check_out);
 
+      console.log('Checking room:', entry.room_number, '| today:', selectedDate, '| checkIn:', entry.check_in, '| checkOut:', entry.check_out);
+
       // Check if today is checkout day → dirty
-      if (today.isSame(checkOut, 'day')) return true;
+      if (today.isSame(checkOut, 'day')) {
+        console.log('  → Checkout day, DIRTY');
+        return true;
+      }
 
       // Check if today is every 2nd day from check-in (day 2, 4, 6, ...)
       // NOT day 0 (check-in day) because room was cleaned for guest
       const daysSinceCheckIn = today.diff(checkIn, 'day');
-      if (daysSinceCheckIn >= 2 && daysSinceCheckIn % 2 === 0) return true;
+      console.log('  → Days since check-in:', daysSinceCheckIn);
+      if (daysSinceCheckIn >= 2 && daysSinceCheckIn % 2 === 0) {
+        console.log('  → Every 2nd day from day 2, DIRTY');
+        return true;
+      }
 
+      console.log('  → OCCUPIED (not due)');
       return false;
     };
 
