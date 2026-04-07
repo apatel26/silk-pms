@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
-import { hashPassword } from '@/lib/password';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,90 +21,76 @@ async function getCurrentUser() {
   return decodeSession(sessionCookie.value);
 }
 
-// GET /api/users - List all users (admin only)
+// GET /api/roles - List all roles
 export async function GET() {
   try {
     const currentUser = await getCurrentUser();
-
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
     if (currentUser.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     const supabase = createServerClient();
-
     const { data, error } = await supabase
-      .from('users')
-      .select('id, username, full_name, role, active, created_at, photo_url')
-      .order('created_at', { ascending: false });
+      .from('roles')
+      .select('*')
+      .order('name', { ascending: true });
 
     if (error) throw error;
-
-    return NextResponse.json(data);
+    return NextResponse.json(data || []);
   } catch (error) {
-    console.error('Error fetching users:', error);
-    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+    console.error('Error fetching roles:', error);
+    return NextResponse.json({ error: 'Failed to fetch roles' }, { status: 500 });
   }
 }
 
-// POST /api/users - Create new user (admin only)
+// POST /api/roles - Create new role
 export async function POST(request: Request) {
   try {
     const currentUser = await getCurrentUser();
-
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
     if (currentUser.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     const body = await request.json();
-    const { username, password, full_name, role, photo_url } = body;
+    const { name, permissions } = body;
 
-    if (!username || !password) {
-      return NextResponse.json({ error: 'Username and password required' }, { status: 400 });
-    }
-
-    if (!['admin', 'manager', 'staff'].includes(role)) {
-      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ error: 'Role name required' }, { status: 400 });
     }
 
     const supabase = createServerClient();
 
-    // Check if username exists
+    // Check if role name exists
     const { data: existing } = await supabase
-      .from('users')
+      .from('roles')
       .select('id')
-      .eq('username', username)
+      .eq('name', name)
       .single();
 
     if (existing) {
-      return NextResponse.json({ error: 'Username already exists' }, { status: 400 });
+      return NextResponse.json({ error: 'Role name already exists' }, { status: 400 });
     }
 
     const { data, error } = await supabase
-      .from('users')
+      .from('roles')
       .insert([{
-        username,
-        password_hash: hashPassword(password),
-        full_name: full_name || null,
-        role,
-        active: true,
-        photo_url: photo_url || null,
+        name,
+        permissions: permissions || [],
+        is_active: true,
       }])
-      .select('id, username, full_name, role, active, created_at, photo_url')
+      .select()
       .single();
 
     if (error) throw error;
-
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error('Error creating user:', error);
-    return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
+    console.error('Error creating role:', error);
+    return NextResponse.json({ error: 'Failed to create role' }, { status: 500 });
   }
 }

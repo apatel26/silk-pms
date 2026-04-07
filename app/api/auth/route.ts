@@ -11,6 +11,7 @@ interface SessionData {
   username: string;
   role: string;
   fullName: string;
+  photoUrl: string | null;
 }
 
 function createSessionData(user: any): SessionData {
@@ -19,6 +20,7 @@ function createSessionData(user: any): SessionData {
     username: user.username,
     role: user.role,
     fullName: user.full_name || '',
+    photoUrl: user.photo_url || null,
   };
 }
 
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
         username: user.username,
         role: user.role,
         fullName: user.full_name,
+        photoUrl: user.photo_url || null,
       },
     });
   } catch (error) {

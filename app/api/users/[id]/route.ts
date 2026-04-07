@@ -43,6 +43,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (body.username) updateData.username = body.username;
     if (body.password) updateData.password_hash = hashPassword(body.password);
     if (body.full_name !== undefined) updateData.full_name = body.full_name;
+    if (body.photo_url !== undefined) updateData.photo_url = body.photo_url;
     if (body.role) {
       if (!['admin', 'manager', 'staff'].includes(body.role)) {
         return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
@@ -55,7 +56,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       .from('users')
       .update(updateData)
       .eq('id', id)
-      .select('id, username, full_name, role, active, created_at')
+      .select('id, username, full_name, role, active, created_at, photo_url')
       .single();
 
     if (error) throw error;
