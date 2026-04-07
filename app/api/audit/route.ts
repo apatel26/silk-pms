@@ -21,30 +21,6 @@ async function getCurrentUser() {
   return decodeSession(sessionCookie.value);
 }
 
-// Helper to log an action
-export async function logAction(
-  supabase: any,
-  userId: string,
-  username: string,
-  action: string,
-  entityType: string,
-  entityId: string,
-  details: any = null
-) {
-  try {
-    await supabase.from('audit_log').insert([{
-      user_id: userId,
-      username,
-      action,
-      entity_type: entityType,
-      entity_id: entityId,
-      details: details ? JSON.stringify(details) : null,
-    }]);
-  } catch (error) {
-    console.error('Error logging action:', error);
-  }
-}
-
 // GET /api/audit - Get audit logs
 export async function GET(request: Request) {
   try {
