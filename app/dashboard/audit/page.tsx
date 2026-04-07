@@ -112,67 +112,70 @@ export default function AuditLogPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Audit Log</h1>
-        <p className="text-slate-400">Track all user actions in the system</p>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Header & Filters */}
+      <div className="space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Action</label>
-            <select
-              value={filters.action}
-              onChange={(e) => handleFilterChange('action', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            <h1 className="text-2xl font-bold text-white">Audit Log</h1>
+            <p className="text-slate-400">Track all user actions in the system</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-400">{total} entries</span>
+            <button
+              onClick={fetchLogs}
+              className="px-4 py-2 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-600/20 hover:bg-blue-600/20 transition"
             >
-              {ACTION_TYPES.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Entity Type</label>
-            <select
-              value={filters.entity_type}
-              onChange={(e) => handleFilterChange('entity_type', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-            >
-              {ENTITY_TYPES.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">From Date</label>
-            <input
-              type="date"
-              value={filters.start_date}
-              onChange={(e) => handleFilterChange('start_date', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">To Date</label>
-            <input
-              type="date"
-              value={filters.end_date}
-              onChange={(e) => handleFilterChange('end_date', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
+              Refresh
+            </button>
           </div>
         </div>
-        <div className="mt-4 flex items-center justify-between">
-          <button
-            onClick={fetchLogs}
-            className="px-4 py-2 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-600/20 hover:bg-blue-600/20 transition"
-          >
-            Refresh
-          </button>
-          <span className="text-sm text-slate-400">
-            {total} log entries
-          </span>
+
+        {/* Filters */}
+        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Action</label>
+              <select
+                value={filters.action}
+                onChange={(e) => handleFilterChange('action', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                {ACTION_TYPES.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Entity Type</label>
+              <select
+                value={filters.entity_type}
+                onChange={(e) => handleFilterChange('entity_type', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                {ENTITY_TYPES.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">From Date</label>
+              <input
+                type="date"
+                value={filters.start_date}
+                onChange={(e) => handleFilterChange('start_date', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">To Date</label>
+              <input
+                type="date"
+                value={filters.end_date}
+                onChange={(e) => handleFilterChange('end_date', e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+          </div>
         </div>
       </div>
 

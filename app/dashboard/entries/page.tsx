@@ -435,27 +435,29 @@ export default function EntriesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Daily Entry</h1>
-          <p className="text-slate-400">{dayjs(selectedDate).format('dddd, MMMM D, YYYY')}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-          />
-          <button
-            onClick={() => {
-              resetForm();
-              setShowModal(true);
-            }}
-            className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-semibold hover:from-amber-400 hover:to-amber-500 transition"
-          >
-            + Add Entry
-          </button>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 lg:gap-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Daily Entry</h1>
+            <p className="text-slate-400">{dayjs(selectedDate).format('dddd, MMMM D, YYYY')}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+            <button
+              onClick={() => {
+                resetForm();
+                setShowModal(true);
+              }}
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-semibold hover:from-amber-400 hover:to-amber-500 transition whitespace-nowrap"
+            >
+              + Add Entry
+            </button>
+          </div>
         </div>
       </div>
 
