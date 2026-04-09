@@ -45,8 +45,8 @@ export default function LoginPage() {
       } else {
         setError(data.error || 'Invalid credentials');
       }
-    } catch {
-      setError('Something went wrong');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
     }
