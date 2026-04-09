@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = createServerClient();
+    console.error('AUTH DEBUG: Supabase client created');
 
     // Find user
     const { data: user, error } = await supabase
@@ -54,18 +55,24 @@ export async function POST(request: Request) {
       .eq('active', true)
       .single();
 
+    console.error('AUTH DEBUG: User query result:', JSON.stringify({ error, hasUser: !!user }));
+
     if (error || !user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
     // Check password (use verifyPassword to support both legacy and hashed)
-    if (!verifyPassword(password, user.password_hash)) {
+    const passwordValid = verifyPassword(password, user.password_hash);
+    console.error('AUTH DEBUG: Password valid:', passwordValid);
+
+    if (!passwordValid) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
     // Create session
     const sessionData = createSessionData(user);
     const sessionToken = encodeSession(sessionData);
+    console.error('AUTH DEBUG: Session created');
 
     // Set cookie
     const cookieStore = await cookies();
@@ -76,6 +83,8 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
     });
+
+    console.error('AUTH DEBUG: Cookie set, returning success');
 
     return NextResponse.json({
       success: true,
