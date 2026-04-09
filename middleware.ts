@@ -3,6 +3,9 @@ import type { NextRequest } from 'next/server';
 
 function decodeSession(token: string): any | null {
   try {
+    if (!token || typeof token !== 'string') return null;
+    // Validate base64 format before decoding
+    if (!/^[A-Za-z0-9+/]+=*$/.test(token)) return null;
     return JSON.parse(Buffer.from(token, 'base64').toString());
   } catch {
     return null;

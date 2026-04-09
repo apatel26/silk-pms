@@ -25,11 +25,17 @@ function createSessionData(user: any): SessionData {
 }
 
 function encodeSession(data: SessionData): string {
-  return Buffer.from(JSON.stringify(data)).toString('base64');
+  try {
+    return Buffer.from(JSON.stringify(data)).toString('base64');
+  } catch {
+    throw new Error('Failed to encode session data');
+  }
 }
 
 function decodeSession(token: string): SessionData | null {
   try {
+    if (!token || typeof token !== 'string') return null;
+    if (!/^[A-Za-z0-9+/]+=*$/.test(token)) return null;
     return JSON.parse(Buffer.from(token, 'base64').toString());
   } catch {
     return null;
@@ -75,14 +81,19 @@ export async function POST(request: Request) {
     console.error('AUTH DEBUG: Session created');
 
     // Set cookie
-    const cookieStore = await cookies();
-    cookieStore.set(AUTH_COOKIE_NAME, sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    });
+    try {
+      const cookieStore = await cookies();
+      cookieStore.set(AUTH_COOKIE_NAME, sessionToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: '/',
+      });
+    } catch (cookieError) {
+      console.error('AUTH DEBUG: Cookie set error:', cookieError);
+      throw new Error('Failed to set session cookie');
+    }
 
     console.error('AUTH DEBUG: Cookie set, returning success');
 
