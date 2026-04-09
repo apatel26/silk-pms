@@ -54,16 +54,20 @@ export async function POST(request: Request) {
     console.error('AUTH DEBUG: Supabase client created');
 
     // Find user
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('username', username)
-      .eq('active', true)
-      .single();
+    let user = null;
+    let userError = null;
+    try {
+      const result = await supabase.from('users').select('*').eq('username', username).eq('active', true).single();
+      user = result.data;
+      userError = result.error;
+      console.error('AUTH DEBUG: Query result error:', userError?.message);
+      console.error('AUTH DEBUG: Query result user:', user ? 'found' : 'not found');
+    } catch (queryErr) {
+      console.error('AUTH DEBUG: Query exception:', queryErr instanceof Error ? queryErr.message : String(queryErr));
+      return NextResponse.json({ error: 'Database query failed: ' + (queryErr instanceof Error ? queryErr.message : String(queryErr)) }, { status: 500 });
+    }
 
-    console.error('AUTH DEBUG: User query result:', JSON.stringify({ error, hasUser: !!user }));
-
-    if (error || !user) {
+    if (userError || !user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
