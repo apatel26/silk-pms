@@ -70,12 +70,13 @@ export async function POST(request: Request) {
     }
 
     if (userError || !user) {
+      console.error('AUTH DEBUG: Returning 401 because userError:', userError?.message, 'user:', user ? 'found' : 'not found');
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
     // Check password (use verifyPassword to support both legacy and hashed)
     const passwordValid = verifyPassword(password, user.password_hash);
-    console.error('AUTH DEBUG: Password valid:', passwordValid);
+    console.error('AUTH DEBUG: Password valid:', passwordValid, 'input length:', password.length, 'hash length:', user.password_hash.length);
 
     if (!passwordValid) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
@@ -116,6 +117,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Login error:', error);
     const message = error instanceof Error ? error.message : String(error);
+    console.error('AUTH DEBUG: Catch block error message:', message);
     return NextResponse.json({ error: 'Login failed: ' + message }, { status: 500 });
   }
 }
