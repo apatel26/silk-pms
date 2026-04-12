@@ -52,8 +52,6 @@ export async function POST(request: Request) {
 
     const supabase = createServerClient();
     console.error('AUTH DEBUG: Supabase client created');
-    console.error('AUTH DEBUG: Supabase URL:', supabase.supabaseUrl ? 'set' : 'EMPTY');
-    console.error('AUTH DEBUG: Supabase key:', supabase.supabaseKey ? 'set (len=' + supabase.supabaseKey.length + ')' : 'EMPTY');
 
     // Find user
     let user = null;
