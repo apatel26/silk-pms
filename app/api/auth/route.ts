@@ -59,11 +59,10 @@ export async function POST(request: Request) {
     try {
       console.error('AUTH DEBUG: Starting query with supabase');
       const result = await supabase.from('users').select('*').eq('username', username).eq('active', true).single();
-      console.error('AUTH DEBUG: Query completed, result:', JSON.stringify(result));
       user = result.data;
       userError = result.error;
-      console.error('AUTH DEBUG: Query result error:', userError?.message);
-      console.error('AUTH DEBUG: Query result user:', user ? 'found' : 'not found');
+      console.error('AUTH DEBUG: Query result data:', user ? 'found' : 'null');
+      console.error('AUTH DEBUG: Query result error:', userError ? userError.message : 'none');
     } catch (queryErr) {
       console.error('AUTH DEBUG: Query exception:', queryErr instanceof Error ? queryErr.message : String(queryErr));
       console.error('AUTH DEBUG: Full error stack:', queryErr instanceof Error ? queryErr.stack : 'no stack');
