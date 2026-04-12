@@ -52,18 +52,23 @@ export async function POST(request: Request) {
 
     const supabase = createServerClient();
     console.error('AUTH DEBUG: Supabase client created');
+    console.error('AUTH DEBUG: Supabase URL:', supabase.supabaseUrl ? 'set' : 'EMPTY');
+    console.error('AUTH DEBUG: Supabase key:', supabase.supabaseKey ? 'set (len=' + supabase.supabaseKey.length + ')' : 'EMPTY');
 
     // Find user
     let user = null;
     let userError = null;
     try {
+      console.error('AUTH DEBUG: Starting query with supabase');
       const result = await supabase.from('users').select('*').eq('username', username).eq('active', true).single();
+      console.error('AUTH DEBUG: Query completed, result:', JSON.stringify(result));
       user = result.data;
       userError = result.error;
       console.error('AUTH DEBUG: Query result error:', userError?.message);
       console.error('AUTH DEBUG: Query result user:', user ? 'found' : 'not found');
     } catch (queryErr) {
       console.error('AUTH DEBUG: Query exception:', queryErr instanceof Error ? queryErr.message : String(queryErr));
+      console.error('AUTH DEBUG: Full error stack:', queryErr instanceof Error ? queryErr.stack : 'no stack');
       return NextResponse.json({ error: 'Database query failed: ' + (queryErr instanceof Error ? queryErr.message : String(queryErr)) }, { status: 500 });
     }
 
