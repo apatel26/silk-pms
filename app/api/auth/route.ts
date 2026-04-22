@@ -29,8 +29,10 @@ function encodeSession(data: SessionData): string {
     // Use URL-safe base64 to avoid cookie issues with + and / characters
     const jsonStr = JSON.stringify(data);
     // Replace + with -, / with _, and remove padding = for cleaner URLs
-    return Buffer.from(jsonStr).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  } catch {
+    const base64 = Buffer.from(jsonStr).toString('base64');
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  } catch (err) {
+    console.error('AUTH DEBUG: encodeSession error:', err instanceof Error ? err.message : String(err));
     throw new Error('Failed to encode session data');
   }
 }
