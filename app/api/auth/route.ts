@@ -105,8 +105,8 @@ export async function POST(request: Request) {
         path: '/',
       });
     } catch (cookieError) {
-      console.error('AUTH DEBUG: Cookie set error:', cookieError);
-      throw new Error('Failed to set session cookie');
+      console.error('AUTH DEBUG: Cookie set error:', String(cookieError));
+      return NextResponse.json({ error: 'Failed to set session cookie' }, { status: 500 });
     }
 
     console.error('AUTH DEBUG: Cookie set, returning success');
