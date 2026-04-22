@@ -154,9 +154,21 @@ export async function GET() {
       return NextResponse.json({ authenticated: false });
     }
 
+    // Fetch fresh user data including photo_url from database
+    const supabase = createServerClient();
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, username, role, full_name, photo_url')
+      .eq('id', sessionData.userId)
+      .single();
+
     return NextResponse.json({
       authenticated: true,
-      user: sessionData,
+      user: {
+        ...sessionData,
+        fullName: user?.full_name || sessionData.fullName,
+        photoUrl: user?.photo_url || null,
+      },
     });
   } catch (error) {
     console.error('Session check error:', error);
