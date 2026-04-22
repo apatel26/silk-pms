@@ -97,15 +97,21 @@ export async function POST(request: Request) {
     // Set cookie
     try {
       const cookieStore = await cookies();
-      cookieStore.set(AUTH_COOKIE_NAME, sessionToken, {
+      const cookieOptions = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: true,
+        sameSite: 'lax' as const,
         maxAge: 60 * 60 * 24 * 7, // 7 days
         path: '/',
-      });
+      };
+      console.error('AUTH DEBUG: Cookie token length:', sessionToken.length);
+      console.error('AUTH DEBUG: Cookie options:', JSON.stringify(cookieOptions));
+      cookieStore.set(AUTH_COOKIE_NAME, sessionToken, cookieOptions);
+      console.error('AUTH DEBUG: Cookie set completed');
     } catch (cookieError) {
       console.error('AUTH DEBUG: Cookie set error:', String(cookieError));
+      console.error('AUTH DEBUG: Error name:', cookieError instanceof Error ? cookieError.name : 'unknown');
+      console.error('AUTH DEBUG: Error message:', cookieError instanceof Error ? cookieError.message : String(cookieError));
       return NextResponse.json({ error: 'Failed to set session cookie' }, { status: 500 });
     }
 
