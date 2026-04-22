@@ -4,9 +4,12 @@ import type { NextRequest } from 'next/server';
 function decodeSession(token: string): any | null {
   try {
     if (!token || typeof token !== 'string') return null;
-    // Validate base64 format before decoding
-    if (!/^[A-Za-z0-9+/]+=*$/.test(token)) return null;
-    return JSON.parse(Buffer.from(token, 'base64').toString());
+    // Restore standard base64 from URL-safe version
+    const standardBase64 = token.replace(/-/g, '+').replace(/_/g, '/');
+    // Add padding if needed
+    const padded = standardBase64 + '=='.slice(0, (4 - (standardBase64.length % 4)) % 4);
+    if (!/^[A-Za-z0-9+/]+=*$/.test(padded)) return null;
+    return JSON.parse(Buffer.from(padded, 'base64').toString());
   } catch {
     return null;
   }
