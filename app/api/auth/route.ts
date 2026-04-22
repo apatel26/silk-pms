@@ -98,9 +98,12 @@ export async function POST(request: Request) {
     // Set cookie
     try {
       const cookieStore = await cookies();
+      // Use explicit secure setting instead of relying on NODE_ENV
+      const isProduction = process.env.NODE_ENV === 'production';
+      console.error('AUTH DEBUG: NODE_ENV:', process.env.NODE_ENV, 'isProduction:', isProduction);
       const cookieOptions = {
         httpOnly: true,
-        secure: true,
+        secure: isProduction,
         sameSite: 'lax' as const,
         maxAge: 60 * 60 * 24 * 7, // 7 days
         path: '/',
