@@ -23,15 +23,14 @@ async function getCurrentUser() {
 }
 
 // PUT /api/rate-plans/[id] - Update rate plan
-export async function PUT(request: Request) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const { id } = await params;
     if (!id) {
       return NextResponse.json({ error: 'Rate plan ID required' }, { status: 400 });
     }
@@ -90,15 +89,14 @@ export async function PUT(request: Request) {
 }
 
 // DELETE /api/rate-plans/[id] - Delete rate plan
-export async function DELETE(request: Request) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const { id } = await params;
     if (!id) {
       return NextResponse.json({ error: 'Rate plan ID required' }, { status: 400 });
     }

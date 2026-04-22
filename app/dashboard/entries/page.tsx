@@ -6,6 +6,16 @@ import dayjs from 'dayjs';
 const GUEST_ROOMS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212];
 const RV_SITES = Array.from({ length: 15 }, (_, i) => i + 1);
 
+interface RatePlan {
+  id: string;
+  name: string;
+  description: string | null;
+  base_rate: number;
+  tax_c_rate: number;
+  tax_s_rate: number;
+  is_active: boolean;
+}
+
 interface Entry {
   id: string;
   entry_type: 'guest' | 'rv';
@@ -42,7 +52,7 @@ interface FormData {
   site_number: string;
   customer_name: string;
   // Guest fields
-  rate_plan: 'standard' | 'custom';
+  rate_plan_id: string;
   custom_rate: number;
   check_in: string;
   check_out: string;
@@ -62,10 +72,7 @@ interface FormData {
 }
 
 interface Settings {
-  default_room_rate: number;
   default_pet_fee: number;
-  city_tax_rate: number;
-  state_tax_rate: number;
   weekly_30amp: number;
   weekly_50amp: number;
   monthly_30amp: number;
@@ -81,11 +88,9 @@ export default function EntriesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const [view, setView] = useState<'guests' | 'rv'>('guests');
+  const [ratePlans, setRatePlans] = useState<RatePlan[]>([]);
   const [settings, setSettings] = useState<Settings>({
-    default_room_rate: 70,
     default_pet_fee: 20,
-    city_tax_rate: 0.07,
-    state_tax_rate: 0.06,
     weekly_30amp: 200,
     weekly_50amp: 230,
     monthly_30amp: 400,
@@ -98,8 +103,8 @@ export default function EntriesPage() {
     room_number: '101',
     site_number: '1',
     customer_name: '',
-    rate_plan: 'standard',
-    custom_rate: 70,
+    rate_plan_id: '',
+    custom_rate: 0,
     check_in: dayjs().format('YYYY-MM-DD'),
     check_out: dayjs().add(1, 'day').format('YYYY-MM-DD'),
     pet_count: 0,
@@ -118,7 +123,20 @@ export default function EntriesPage() {
   useEffect(() => {
     fetchEntries();
     fetchSettings();
+    fetchRatePlans();
   }, [selectedDate]);
+
+  const fetchRatePlans = async () => {
+    try {
+      const res = await fetch('/api/rate-plans');
+      if (res.ok) {
+        const data = await res.json();
+        setRatePlans(data.filter((p: RatePlan) => p.is_active));
+      }
+    } catch (error) {
+      console.error('Error fetching rate plans:', error);
+    }
+  };
 
   // Auto-adjust check-out date when RV duration changes
   const adjustRVDates = (duration: 'weekly' | 'monthly') => {
@@ -139,10 +157,7 @@ export default function EntriesPage() {
         const data = await res.json();
         if (data) {
           setSettings({
-            default_room_rate: parseFloat(data.default_room_rate) || 70,
             default_pet_fee: parseFloat(data.default_pet_fee) || 20,
-            city_tax_rate: parseFloat(data.city_tax_rate) || 0.07,
-            state_tax_rate: parseFloat(data.state_tax_rate) || 0.06,
             weekly_30amp: parseFloat(data.weekly_30amp) || 200,
             weekly_50amp: parseFloat(data.weekly_50amp) || 230,
             monthly_30amp: parseFloat(data.monthly_30amp) || 400,
@@ -220,12 +235,27 @@ export default function EntriesPage() {
     let petFee = 0;
 
     if (formData.entry_type === 'guest') {
-      // Guest room pricing (with tax)
-      rate = formData.rate_plan === 'custom' ? formData.custom_rate : settings.default_room_rate;
-      const subtotalForNights = rate * numNights;
-      taxC = subtotalForNights * settings.city_tax_rate;
-      taxS = subtotalForNights * settings.state_tax_rate;
-      subtotal = subtotalForNights + taxC + taxS;
+      // Guest room pricing
+      if (formData.rate_plan_id) {
+        const plan = ratePlans.find(p => p.id === formData.rate_plan_id);
+        if (plan) {
+          rate = plan.base_rate;
+          const subtotalForNights = rate * numNights;
+          taxC = subtotalForNights * plan.tax_c_rate;
+          taxS = subtotalForNights * plan.tax_s_rate;
+          subtotal = subtotalForNights + taxC + taxS;
+        }
+      } else {
+        // Custom rate (no rate plan)
+        rate = formData.custom_rate;
+        const selectedPlan = ratePlans[0];
+        const taxCRate = selectedPlan?.tax_c_rate || 0.07;
+        const taxSRate = selectedPlan?.tax_s_rate || 0.06;
+        const subtotalForNights = rate * numNights;
+        taxC = subtotalForNights * taxCRate;
+        taxS = subtotalForNights * taxSRate;
+        subtotal = subtotalForNights + taxC + taxS;
+      }
 
       if (formData.pet_count > 0) {
         petFee = formData.pet_fee_type === 'default'
@@ -258,14 +288,26 @@ export default function EntriesPage() {
     let petFee = 0;
 
     if (formData.entry_type === 'guest') {
-      // Guest room pricing (with tax)
-      rate = formData.rate_plan === 'custom' ? formData.custom_rate : settings.default_room_rate;
-      subtotalForNights = rate * numNights;
-      taxC = subtotalForNights * settings.city_tax_rate;
-      taxS = subtotalForNights * settings.state_tax_rate;
+      // Guest room pricing
+      if (formData.rate_plan_id) {
+        const plan = ratePlans.find(p => p.id === formData.rate_plan_id);
+        if (plan) {
+          rate = plan.base_rate;
+          subtotalForNights = rate * numNights;
+          taxC = subtotalForNights * plan.tax_c_rate;
+          taxS = subtotalForNights * plan.tax_s_rate;
+        }
+      } else {
+        // Custom rate (no rate plan)
+        rate = formData.custom_rate;
+        subtotalForNights = rate * numNights;
+        const selectedPlan = ratePlans[0];
+        taxC = subtotalForNights * (selectedPlan?.tax_c_rate || 0.07);
+        taxS = subtotalForNights * (selectedPlan?.tax_s_rate || 0.06);
+      }
       if (formData.pet_count > 0) {
         petFee = formData.pet_fee_type === 'default'
-          ? settings.default_pet_fee * formData.pet_count * numNights
+          ? DEFAULT_PET_FEE * formData.pet_count * numNights
           : formData.custom_pet_fee * formData.pet_count * numNights;
       }
     } else {
@@ -288,7 +330,7 @@ export default function EntriesPage() {
         room_number: formData.entry_type === 'guest' ? roomNum : null,
         site_number: formData.entry_type === 'rv' ? roomNum : null,
         customer_name: formData.customer_name,
-        rate_plan_id: null,
+        rate_plan_id: formData.entry_type === 'guest' ? (formData.rate_plan_id || null) : null,
         check_in: formData.check_in || null,
         check_out: formData.check_out || null,
         room_rate: rate,
@@ -365,7 +407,7 @@ export default function EntriesPage() {
       room_number: entry.room_number || '101',
       site_number: entry.site_number || '1',
       customer_name: entry.customer_name || '',
-      rate_plan: 'standard',
+      rate_plan_id: entry.rate_plan_id || '',
       custom_rate: entry.room_rate,
       check_in: entry.check_in || '',
       check_out: entry.check_out || '',
@@ -394,8 +436,8 @@ export default function EntriesPage() {
       room_number: '101',
       site_number: '1',
       customer_name: '',
-      rate_plan: 'standard',
-      custom_rate: 70,
+      rate_plan_id: ratePlans[0]?.id || '',
+      custom_rate: 0,
       check_in: dayjs().format('YYYY-MM-DD'),
       check_out: dayjs().add(1, 'day').format('YYYY-MM-DD'),
       pet_count: 0,
@@ -810,43 +852,41 @@ export default function EntriesPage() {
               </div>
 
               {/* Rate Plan */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Rate</label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, rate_plan: 'standard' })}
-                    className={`flex-1 py-3 rounded-lg font-medium transition ${
-                      formData.rate_plan === 'standard'
-                        ? 'bg-amber-500 text-slate-900'
-                        : 'bg-slate-800 text-slate-400 hover:text-white'
-                    }`}
+              {formData.entry_type === 'guest' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Rate Plan</label>
+                  <select
+                    value={formData.rate_plan_id}
+                    onChange={(e) => {
+                      if (e.target.value === '__custom') {
+                        setFormData({ ...formData, rate_plan_id: '', custom_rate: formData.custom_rate || 0 });
+                      } else {
+                        setFormData({ ...formData, rate_plan_id: e.target.value, custom_rate: 0 });
+                      }
+                    }}
+                    className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                   >
-                    Standard ($70)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, rate_plan: 'custom' })}
-                    className={`flex-1 py-3 rounded-lg font-medium transition ${
-                      formData.rate_plan === 'custom'
-                        ? 'bg-amber-500 text-slate-900'
-                        : 'bg-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Custom Rate
-                  </button>
+                    <option value="">-- Select Rate Plan --</option>
+                    {ratePlans.map(plan => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name} (${plan.base_rate}/night + tax)
+                      </option>
+                    ))}
+                    <option value="__custom">Custom Rate</option>
+                  </select>
+
+                  {formData.rate_plan_id === '' && (
+                    <input
+                      type="number"
+                      value={formData.custom_rate}
+                      onChange={(e) => setFormData({ ...formData, custom_rate: parseFloat(e.target.value) || 0 })}
+                      className="mt-2 w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="Enter custom rate per night"
+                      step="0.01"
+                    />
+                  )}
                 </div>
-                {formData.rate_plan === 'custom' && (
-                  <input
-                    type="number"
-                    value={formData.custom_rate}
-                    onChange={(e) => setFormData({ ...formData, custom_rate: parseFloat(e.target.value) || 0 })}
-                    className="mt-2 w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    placeholder="Enter custom rate"
-                    step="0.01"
-                  />
-                )}
-              </div>
+              )}
 
               {/* Pet Fees */}
               <div>

@@ -8,7 +8,6 @@ interface Settings {
   phone: string;
   city_tax_rate: number;
   state_tax_rate: number;
-  default_room_rate: number;
   default_pet_fee: number;
   weekly_30amp: number;
   weekly_50amp: number;
@@ -146,7 +145,6 @@ export default function SettingsPage() {
     phone: '',
     city_tax_rate: 7,
     state_tax_rate: 6,
-    default_room_rate: 70,
     default_pet_fee: 20,
     weekly_30amp: 200,
     weekly_50amp: 230,
@@ -182,7 +180,6 @@ export default function SettingsPage() {
         phone: data.phone || '',
         city_tax_rate: cityTaxPercent,
         state_tax_rate: stateTaxPercent,
-        default_room_rate: data.default_room_rate || 70,
         default_pet_fee: data.default_pet_fee || 20,
         weekly_30amp: data.weekly_30amp || 200,
         weekly_50amp: data.weekly_50amp || 230,
@@ -214,7 +211,6 @@ export default function SettingsPage() {
         phone: settings.phone,
         city_tax_rate: cityTax / 100,
         state_tax_rate: stateTax / 100,
-        default_room_rate: settings.default_room_rate,
         default_pet_fee: settings.default_pet_fee,
         weekly_30amp: settings.weekly_30amp,
         weekly_50amp: settings.weekly_50amp,
@@ -383,31 +379,6 @@ export default function SettingsPage() {
               max="100"
               value={settings.state_tax_rate}
               onChange={(e) => handleChange('state_tax_rate', parseFloat(e.target.value) || 0)}
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Default Rates */}
-      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-        <h3 className="text-lg font-semibold text-white mb-4">Default Rates</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Standard Room Rate ($)</label>
-            <input
-              type="number"
-              value={settings.default_room_rate}
-              onChange={(e) => handleChange('default_room_rate', parseFloat(e.target.value) || 0)}
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Default Pet Fee ($/night)</label>
-            <input
-              type="number"
-              value={settings.default_pet_fee}
-              onChange={(e) => handleChange('default_pet_fee', parseFloat(e.target.value) || 0)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
