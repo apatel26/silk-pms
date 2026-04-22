@@ -135,14 +135,14 @@ export default function DashboardLayout({
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-1">
+            <nav className="hidden lg:flex items-center gap-1 flex-wrap">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
                       isActive
                         ? 'bg-amber-500/10 text-amber-400'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
@@ -154,14 +154,14 @@ export default function DashboardLayout({
               })}
               {user?.role === 'admin' && (
                 <>
-                  <div className="w-px h-6 bg-slate-700 mx-2" />
+                  <div className="w-px h-6 bg-slate-700 mx-1" />
                   {adminItems.map((item) => {
                     const isActive = pathname === item.href;
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
                           isActive
                             ? 'bg-amber-500/10 text-amber-400'
                             : 'text-slate-400 hover:text-white hover:bg-slate-800'
