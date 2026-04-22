@@ -4,7 +4,6 @@ import { cookies } from 'next/headers';
 import { verifyPassword } from '@/lib/password';
 
 const AUTH_COOKIE_NAME = 'pms_session';
-const SESSION_COOKIE_VALUE_SEPARATOR = '|';
 
 interface SessionData {
   userId: string;
@@ -19,29 +18,19 @@ function createSessionData(user: any): SessionData {
     username: user.username,
     role: user.role,
     fullName: user.full_name || '',
-    // Don't include photoUrl in cookie - it's base64 encoded image data that's too large
   };
 }
 
 function encodeSession(data: SessionData): string {
-  try {
-    // Use URL-safe base64 to avoid cookie issues with + and / characters
-    const jsonStr = JSON.stringify(data);
-    // Replace + with -, / with _, and remove padding = for cleaner URLs
-    const base64 = Buffer.from(jsonStr).toString('base64');
-    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  } catch (err) {
-    console.error('AUTH DEBUG: encodeSession error:', err instanceof Error ? err.message : String(err));
-    throw new Error('Failed to encode session data');
-  }
+  const jsonStr = JSON.stringify(data);
+  const base64 = Buffer.from(jsonStr).toString('base64');
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function decodeSession(token: string): SessionData | null {
   try {
     if (!token || typeof token !== 'string') return null;
-    // Restore standard base64 from URL-safe version
     const standardBase64 = token.replace(/-/g, '+').replace(/_/g, '/');
-    // Add padding if needed
     const padded = standardBase64 + '=='.slice(0, (4 - (standardBase64.length % 4)) % 4);
     if (!/^[A-Za-z0-9+/]+=*$/.test(padded)) return null;
     return JSON.parse(Buffer.from(padded, 'base64').toString());
@@ -59,67 +48,41 @@ export async function POST(request: Request) {
     }
 
     const supabase = createServerClient();
-    console.error('AUTH DEBUG: Supabase client created');
-
-    // Find user
     let user = null;
     let userError = null;
     try {
-      console.error('AUTH DEBUG: Starting query with supabase');
       const result = await supabase.from('users').select('*').eq('username', username).eq('active', true).single();
       user = result.data;
       userError = result.error;
-      console.error('AUTH DEBUG: Query result data:', user ? 'found' : 'null');
-      console.error('AUTH DEBUG: Query result error:', userError ? userError.message : 'none');
     } catch (queryErr) {
-      console.error('AUTH DEBUG: Query exception:', queryErr instanceof Error ? queryErr.message : String(queryErr));
-      console.error('AUTH DEBUG: Full error stack:', queryErr instanceof Error ? queryErr.stack : 'no stack');
       return NextResponse.json({ error: 'Database query failed: ' + (queryErr instanceof Error ? queryErr.message : String(queryErr)) }, { status: 500 });
     }
 
     if (userError || !user) {
-      console.error('AUTH DEBUG: Returning 401 because userError:', userError?.message, 'user:', user ? 'found' : 'not found');
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Check password (use verifyPassword to support both legacy and hashed)
     const passwordValid = verifyPassword(password, user.password_hash);
-    console.error('AUTH DEBUG: Password valid:', passwordValid, 'input length:', password.length, 'hash length:', user.password_hash.length);
-
     if (!passwordValid) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Create session
     const sessionData = createSessionData(user);
     const sessionToken = encodeSession(sessionData);
-    console.error('AUTH DEBUG: Session created');
 
-    // Set cookie
     try {
       const cookieStore = await cookies();
-      // Use explicit secure setting instead of relying on NODE_ENV
-      const isProduction = process.env.NODE_ENV === 'production';
-      console.error('AUTH DEBUG: NODE_ENV:', process.env.NODE_ENV, 'isProduction:', isProduction);
-      const cookieOptions = {
+      cookieStore.set(AUTH_COOKIE_NAME, sessionToken, {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: 'lax' as const,
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7,
         path: '/',
-      };
-      console.error('AUTH DEBUG: Cookie token length:', sessionToken.length);
-      console.error('AUTH DEBUG: Cookie options:', JSON.stringify(cookieOptions));
-      cookieStore.set(AUTH_COOKIE_NAME, sessionToken, cookieOptions);
-      console.error('AUTH DEBUG: Cookie set completed');
+      });
     } catch (cookieError) {
-      console.error('AUTH DEBUG: Cookie set error:', String(cookieError));
-      console.error('AUTH DEBUG: Error name:', cookieError instanceof Error ? cookieError.name : 'unknown');
-      console.error('AUTH DEBUG: Error message:', cookieError instanceof Error ? cookieError.message : String(cookieError));
+      console.error('Cookie set error:', cookieError);
       return NextResponse.json({ error: 'Failed to set session cookie' }, { status: 500 });
     }
-
-    console.error('AUTH DEBUG: Cookie set, returning success');
 
     return NextResponse.json({
       success: true,
@@ -132,12 +95,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error('AUTH DEBUG: ========== CATCH BLOCK ==========');
-    console.error('AUTH DEBUG: Error type:', typeof error);
-    console.error('AUTH DEBUG: Error constructor:', error?.constructor?.name);
-    console.error('AUTH DEBUG: Error message:', error instanceof Error ? error.message : String(error));
-    console.error('AUTH DEBUG: Error stack:', error instanceof Error ? error.stack : 'no stack');
-    console.error('AUTH DEBUG: Full error:', JSON.stringify(error));
+    console.error('Login error:', error);
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: 'Login failed: ' + message }, { status: 500 });
   }
@@ -164,7 +122,6 @@ export async function GET() {
     }
 
     const sessionData = decodeSession(sessionCookie.value);
-
     if (!sessionData) {
       return NextResponse.json({ authenticated: false });
     }
