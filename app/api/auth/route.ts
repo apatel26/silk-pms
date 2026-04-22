@@ -129,9 +129,13 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('AUTH DEBUG: ========== CATCH BLOCK ==========');
+    console.error('AUTH DEBUG: Error type:', typeof error);
+    console.error('AUTH DEBUG: Error constructor:', error?.constructor?.name);
+    console.error('AUTH DEBUG: Error message:', error instanceof Error ? error.message : String(error));
+    console.error('AUTH DEBUG: Error stack:', error instanceof Error ? error.stack : 'no stack');
+    console.error('AUTH DEBUG: Full error:', JSON.stringify(error));
     const message = error instanceof Error ? error.message : String(error);
-    console.error('AUTH DEBUG: Catch block error message:', message);
     return NextResponse.json({ error: 'Login failed: ' + message }, { status: 500 });
   }
 }
