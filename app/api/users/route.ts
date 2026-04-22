@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 import { hashPassword } from '@/lib/password';
+import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,6 +103,16 @@ export async function POST(request: Request) {
       .single();
 
     if (error) throw error;
+
+    // Audit log user creation
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'create',
+      entity_type: 'user',
+      entity_id: data.id,
+      details: { username, role, full_name },
+    });
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {

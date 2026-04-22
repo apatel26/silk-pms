@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,17 @@ export async function POST(request: Request) {
       .single();
 
     if (error) throw error;
+
+    // Audit log photo update
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'update',
+      entity_type: 'user',
+      entity_id: currentUser.userId,
+      details: { field: 'photo_url', action: 'uploaded' },
+    });
+
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error updating user photo:', error);
@@ -71,6 +83,17 @@ export async function DELETE() {
       .single();
 
     if (error) throw error;
+
+    // Audit log photo removal
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'update',
+      entity_type: 'user',
+      entity_id: currentUser.userId,
+      details: { field: 'photo_url', action: 'removed' },
+    });
+
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error removing user photo:', error);

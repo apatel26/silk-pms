@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,6 +71,17 @@ export async function PUT(request: Request) {
       .single();
 
     if (error) throw error;
+
+    // Audit log rate plan update
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'update',
+      entity_type: 'rate_plan',
+      entity_id: id,
+      details: updateData,
+    });
+
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error updating rate plan:', error);
@@ -110,6 +122,17 @@ export async function DELETE(request: Request) {
       .eq('id', id);
 
     if (error) throw error;
+
+    // Audit log rate plan deletion
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'delete',
+      entity_type: 'rate_plan',
+      entity_id: id,
+      details: { deleted_rate_plan_id: id },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting rate plan:', error);

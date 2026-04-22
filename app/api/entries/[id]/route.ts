@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,11 @@ async function getTaxRates() {
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const supabase = createServerClient();
 
@@ -141,6 +147,16 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     if (error) throw error;
 
+    // Audit log entry update
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'update',
+      entity_type: 'entry',
+      entity_id: id,
+      details: { entry_type, room_number, site_number, customer_name, total },
+    });
+
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error updating entry:', error);
@@ -152,6 +168,11 @@ export async function PUT(request: Request, { params }: RouteParams) {
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const supabase = createServerClient();
 
     const { error } = await supabase
@@ -160,6 +181,16 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       .eq('id', id);
 
     if (error) throw error;
+
+    // Audit log entry deletion
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'delete',
+      entity_type: 'entry',
+      entity_id: id,
+      details: { deleted_entry_id: id },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 import { hashPassword } from '@/lib/password';
+import { createAuditLog } from '@/lib/audit';
 
 const AUTH_COOKIE_NAME = 'pms_session';
 
@@ -61,6 +62,16 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     if (error) throw error;
 
+    // Audit log user update
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'update',
+      entity_type: 'user',
+      entity_id: id,
+      details: updateData,
+    });
+
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error updating user:', error);
@@ -93,6 +104,16 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       .eq('id', id);
 
     if (error) throw error;
+
+    // Audit log user deletion
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'delete',
+      entity_type: 'user',
+      entity_id: id,
+      details: { deleted_user_id: id },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

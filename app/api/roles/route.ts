@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,6 +89,17 @@ export async function POST(request: Request) {
       .single();
 
     if (error) throw error;
+
+    // Audit log role creation
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'create',
+      entity_type: 'role',
+      entity_id: data.id,
+      details: { name, permissions },
+    });
+
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('Error creating role:', error);

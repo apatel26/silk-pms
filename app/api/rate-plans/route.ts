@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +87,17 @@ export async function POST(request: Request) {
       .single();
 
     if (error) throw error;
+
+    // Audit log rate plan creation
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'create',
+      entity_type: 'rate_plan',
+      entity_id: data.id,
+      details: { name, base_rate, tax_c_rate, tax_s_rate },
+    });
+
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('Error creating rate plan:', error);

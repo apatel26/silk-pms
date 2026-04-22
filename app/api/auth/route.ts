@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 import { verifyPassword } from '@/lib/password';
+import { createAuditLog } from '@/lib/audit';
 
 const AUTH_COOKIE_NAME = 'pms_session';
 
@@ -70,6 +71,16 @@ export async function POST(request: Request) {
     const sessionData = createSessionData(user);
     const sessionToken = encodeSession(sessionData);
 
+    // Audit log successful login
+    await createAuditLog({
+      userId: user.id,
+      username: user.username,
+      action: 'login',
+      entity_type: 'user',
+      entity_id: user.id,
+      details: { username: user.username },
+    });
+
     try {
       const cookieStore = await cookies();
       cookieStore.set(AUTH_COOKIE_NAME, sessionToken, {
@@ -104,6 +115,23 @@ export async function POST(request: Request) {
 export async function DELETE() {
   try {
     const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(AUTH_COOKIE_NAME);
+
+    // Log logout before deleting cookie
+    if (sessionCookie?.value) {
+      const sessionData = decodeSession(sessionCookie.value);
+      if (sessionData) {
+        await createAuditLog({
+          userId: sessionData.userId,
+          username: sessionData.username,
+          action: 'logout',
+          entity_type: 'user',
+          entity_id: sessionData.userId,
+          details: { username: sessionData.username },
+        });
+      }
+    }
+
     cookieStore.delete(AUTH_COOKIE_NAME);
     return NextResponse.json({ success: true });
   } catch (error) {

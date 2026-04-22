@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,6 +71,17 @@ export async function PUT(request: Request) {
       .single();
 
     if (error) throw error;
+
+    // Audit log role update
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'update',
+      entity_type: 'role',
+      entity_id: id,
+      details: updateData,
+    });
+
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error updating role:', error);
@@ -113,6 +125,17 @@ export async function DELETE(request: Request) {
       .eq('id', id);
 
     if (error) throw error;
+
+    // Audit log role deletion
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'delete',
+      entity_type: 'role',
+      entity_id: id,
+      details: { deleted_role_id: id },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting role:', error);

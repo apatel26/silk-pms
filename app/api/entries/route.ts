@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -209,6 +210,19 @@ export async function POST(request: Request) {
     if (error) {
       console.error('Supabase error:', error);
       return NextResponse.json({ error: 'Failed to create entry', details: error }, { status: 500 });
+    }
+
+    // Audit log entry creation
+    const entrySession = await getCurrentUser();
+    if (entrySession) {
+      await createAuditLog({
+        userId: entrySession.userId,
+        username: entrySession.username,
+        action: 'create',
+        entity_type: 'entry',
+        entity_id: data.id,
+        details: { entry_type, room_number, site_number, customer_name, total },
+      });
     }
 
     return NextResponse.json(data, { status: 201 });

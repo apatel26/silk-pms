@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,6 +90,16 @@ export async function POST(request: Request) {
 
           if (error) throw error;
           results.push(data);
+
+          // Audit log task update
+          await createAuditLog({
+            userId: currentUser.userId,
+            username: currentUser.username,
+            action: 'update',
+            entity_type: 'housekeeping',
+            entity_id: data.id,
+            details: { room_number: data.room_number, status: data.status },
+          });
         }
       }
       return NextResponse.json(results);
@@ -144,6 +155,17 @@ export async function PUT(request: Request) {
       console.error('Housekeeping update error:', error);
       return NextResponse.json({ error: 'Update failed: ' + error.message }, { status: 500 });
     }
+
+    // Audit log housekeeping task update
+    await createAuditLog({
+      userId: currentUser.userId,
+      username: currentUser.username,
+      action: 'update',
+      entity_type: 'housekeeping',
+      entity_id: id,
+      details: { status, notes },
+    });
+
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error updating housekeeping task:', error);

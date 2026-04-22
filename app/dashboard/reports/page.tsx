@@ -125,7 +125,7 @@ export default function ReportsPage() {
 
   const summary = getSummary();
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     setLoading(true);
     try {
       const wb = XLSX.utils.book_new();
@@ -214,6 +214,18 @@ export default function ReportsPage() {
         ? `American_Inn_${selectedYear}_Annual_Report.xlsx`
         : `American_Inn_${dayjs(selectedMonth + '-01').format('MMMM_YYYY')}_Report.xlsx`;
       XLSX.writeFile(wb, fileName);
+
+      // Audit log export
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'export',
+          entity_type: 'report',
+          entity_id: null,
+          details: { type: 'excel', reportType, selectedYear, selectedMonth, entryCount: entries.length }
+        }),
+      });
     } catch (error) {
       console.error('Error exporting Excel:', error);
       alert('Error exporting Excel file');
@@ -222,7 +234,7 @@ export default function ReportsPage() {
     }
   };
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
     setLoading(true);
     try {
       const doc = new jsPDF();
@@ -318,6 +330,18 @@ export default function ReportsPage() {
         ? `American_Inn_${selectedYear}_Annual_Report.pdf`
         : `American_Inn_${dayjs(selectedMonth + '-01').format('MMMM_YYYY')}_Report.pdf`;
       doc.save(fileName);
+
+      // Audit log export
+      await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'export',
+          entity_type: 'report',
+          entity_id: null,
+          details: { type: 'pdf', reportType, selectedYear, selectedMonth, entryCount: entries.length }
+        }),
+      });
     } catch (error) {
       console.error('Error exporting PDF:', error);
       alert('Error exporting PDF file');

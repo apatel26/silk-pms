@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 import * as XLSX from 'xlsx';
+import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,6 +102,20 @@ export async function POST(request: Request) {
       });
     }
 
+    if (type === 'yearly') {
+      const targetYear = year || new Date().getFullYear();
+
+      // Audit log yearly reset
+      await createAuditLog({
+        userId: currentUser.userId,
+        username: currentUser.username,
+        action: 'reset',
+        entity_type: 'settings',
+        entity_id: null,
+        details: { type: 'yearly', year: targetYear },
+      });
+    }
+
     if (type === 'factory') {
       // Factory reset: delete all data except users, property_settings, rooms, rv_sites, rate_plans, roles
 
@@ -112,6 +127,16 @@ export async function POST(request: Request) {
           console.log(`Table ${table} reset skipped:`, e);
         }
       }
+
+      // Audit log factory reset
+      await createAuditLog({
+        userId: currentUser.userId,
+        username: currentUser.username,
+        action: 'reset',
+        entity_type: 'settings',
+        entity_id: null,
+        details: { type: 'factory', tables_cleared: tablesToReset },
+      });
 
       return NextResponse.json({
         success: true,

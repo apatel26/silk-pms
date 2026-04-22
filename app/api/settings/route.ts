@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,6 +126,19 @@ export async function POST(request: Request) {
     if (result.error) {
       console.error('Save error:', result.error);
       return NextResponse.json({ error: 'Save error: ' + result.error.message, code: result.error.code }, { status: 500 });
+    }
+
+    // Audit log settings update
+    const sessionUser = await getCurrentUser();
+    if (sessionUser) {
+      await createAuditLog({
+        userId: sessionUser.userId,
+        username: sessionUser.username,
+        action: 'update',
+        entity_type: 'settings',
+        entity_id: result.data?.id || null,
+        details: { name: body.name, city_tax_rate: body.city_tax_rate, state_tax_rate: body.state_tax_rate },
+      });
     }
 
     return NextResponse.json({ success: true, data: result.data });
