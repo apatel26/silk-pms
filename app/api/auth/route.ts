@@ -11,7 +11,6 @@ interface SessionData {
   username: string;
   role: string;
   fullName: string;
-  photoUrl: string | null;
 }
 
 function createSessionData(user: any): SessionData {
@@ -20,7 +19,7 @@ function createSessionData(user: any): SessionData {
     username: user.username,
     role: user.role,
     fullName: user.full_name || '',
-    photoUrl: user.photo_url || null,
+    // Don't include photoUrl in cookie - it's base64 encoded image data that's too large
   };
 }
 
