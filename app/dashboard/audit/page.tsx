@@ -47,6 +47,7 @@ export default function AuditLogPage() {
     start_date: '',
     end_date: '',
   });
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const limit = 50;
 
   useEffect(() => {
@@ -216,8 +217,13 @@ export default function AuditLogPage() {
                         {log.entity_type || '-'}
                         {log.entity_id && <span className="text-xs text-slate-500 ml-1">#{log.entity_id.substring(0, 8)}</span>}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-400 max-w-xs truncate">
-                        {formatDetails(log.details)}
+                      <td className="px-4 py-3 text-sm text-slate-400 max-w-xs">
+                        <button
+                          onClick={() => setSelectedLog(log)}
+                          className="hover:text-amber-400 hover:underline text-left"
+                        >
+                          {formatDetails(log.details) || '-'}
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -250,6 +256,71 @@ export default function AuditLogPage() {
           </>
         )}
       </div>
+
+      {/* Log Detail Modal */}
+      {selectedLog && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setSelectedLog(null)}>
+          <div className="bg-slate-900 rounded-2xl w-full max-w-lg border border-slate-700" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-white">Audit Log Details</h3>
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="p-1 text-slate-400 hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Timestamp</label>
+                  <p className="text-white">{dayjs(selectedLog.created_at).format('MM/DD/YYYY HH:mm:ss')}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">User</label>
+                  <p className="text-white">{selectedLog.username || 'System'}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Action</label>
+                  <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getActionBadgeColor(selectedLog.action)}`}>
+                    {selectedLog.action}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Entity Type</label>
+                  <p className="text-white">{selectedLog.entity_type || '-'}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Entity ID</label>
+                  <p className="text-white font-mono text-sm">{selectedLog.entity_id || '-'}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Log ID</label>
+                  <p className="text-white font-mono text-sm">{selectedLog.id}</p>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Details</label>
+                <div className="bg-slate-800 rounded-lg p-4 mt-1">
+                  <pre className="text-slate-300 text-sm whitespace-pre-wrap font-mono">
+                    {selectedLog.details ? JSON.stringify(JSON.parse(selectedLog.details), null, 2) : 'No details'}
+                  </pre>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-700 flex justify-end">
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="px-4 py-2 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
