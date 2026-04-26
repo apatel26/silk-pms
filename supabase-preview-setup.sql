@@ -182,6 +182,7 @@ ALTER TABLE audit_log DISABLE ROW LEVEL SECURITY;
 ALTER TABLE backup_records DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
+<<<<<<< HEAD
 -- STEP 2: Copy Data (run these after Step 1)
 -- ============================================
 
@@ -235,3 +236,11 @@ ALTER TABLE backup_records DISABLE ROW LEVEL SECURITY;
 -- 3. Copy the INSERT statements
 -- 4. Paste them into this preview Supabase SQL Editor
 -- 5. Run in order: users, roles, rate_plans, property_settings, rooms, rv_sites, customers, entries
+=======
+-- INSTRUCTIONS FOR SETUP
+-- ============================================
+-- 1. Run this script in your preview Supabase to create tables
+-- 2. Data will be copied separately via INSERT statements
+-- 3. The preview database uses PREVIEW_SUPABASE_URL env var
+-- 4. Production database uses NEXT_PUBLIC_SUPABASE_URL env var
+>>>>>>> main
