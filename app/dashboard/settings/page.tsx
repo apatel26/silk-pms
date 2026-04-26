@@ -568,6 +568,62 @@ export default function SettingsPage() {
           <div id="backupList" className="space-y-2">
             <p className="text-xs text-slate-500">Loading backups...</p>
           </div>
+
+          <div className="border-t border-slate-700 pt-4">
+            <h4 className="text-sm font-medium text-slate-300 mb-3">Restore from Backup</h4>
+            <p className="text-xs text-slate-500 mb-3">Upload a backup Excel file to restore entries. This will add entries without deleting existing data.</p>
+            <div className="flex items-center gap-3">
+              <input
+                type="file"
+                id="restoreFile"
+                accept=".xlsx"
+                className="hidden"
+              />
+              <button
+                onClick={() => document.getElementById('restoreFile')?.click()}
+                className="px-4 py-2 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition text-sm"
+              >
+                Select Backup File
+              </button>
+              <button
+                onClick={async () => {
+                  const fileInput = document.getElementById('restoreFile') as HTMLInputElement;
+                  const file = fileInput?.files?.[0];
+                  if (!file) {
+                    alert('Please select a backup file first');
+                    return;
+                  }
+                  if (!confirm(`Restore entries from ${file.name}? This will add entries to your database.`)) return;
+                  const btn = event?.target as HTMLButtonElement;
+                  btn.disabled = true;
+                  btn.textContent = 'Restoring...';
+                  try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const res = await fetch('/api/cloud-backup/restore', {
+                      method: 'POST',
+                      body: formData,
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      alert(`Restored ${data.totalRestored} entries (${data.guestRooms} guest rooms, ${data.rvSites} RV sites)`);
+                      fileInput.value = '';
+                    } else {
+                      alert('Error: ' + (data.error || 'Failed to restore backup'));
+                    }
+                  } catch (error) {
+                    alert('Error: ' + String(error));
+                  } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Restore Backup';
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/20 hover:bg-blue-500/30 transition text-sm"
+              >
+                Restore Backup
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
