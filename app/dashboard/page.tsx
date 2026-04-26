@@ -1,5 +1,6 @@
 'use client';
 
+// Preview mode test - can be removed after verification
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import dayjs from 'dayjs';
