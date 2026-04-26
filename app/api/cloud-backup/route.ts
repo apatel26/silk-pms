@@ -31,12 +31,16 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const backupSupabaseUrl = process.env.BACKUP_SUPABASE_URL;
+    const backupServiceKey = process.env.BACKUP_SUPABASE_SERVICE_ROLE_KEY;
 
-    const { data, error } = await supabase
+    if (!backupSupabaseUrl || !backupServiceKey) {
+      return NextResponse.json({ error: 'Backup database not configured' }, { status: 500 });
+    }
+
+    const backupDb = createServerClient(backupSupabaseUrl, backupServiceKey);
+
+    const { data, error } = await backupDb
       .from('silk_pms_backups')
       .select('*')
       .order('created_at', { ascending: false });
