@@ -40,6 +40,15 @@ export async function GET() {
 
     const backupDb = createServerClient(backupSupabaseUrl, backupServiceKey);
 
+    // First verify bucket exists
+    const { data: bucketData, error: bucketError } = await backupDb.storage.getBucket('silk-pms-backups');
+    console.log('Bucket check:', bucketData, bucketError);
+
+    // Make bucket public if it exists but is private
+    if (bucketData && !bucketData.public) {
+      await backupDb.storage.updateBucket('silk-pms-backups', { public: true });
+    }
+
     const { data, error } = await backupDb
       .from('silk_pms_backups')
       .select('*')
@@ -157,6 +166,9 @@ export async function POST(request: Request) {
 
     const backupDb = createServerClient(backupSupabaseUrl, backupServiceKey);
     const filePath = `${targetYear}/${fileName}`;
+
+    // Make bucket public if it exists but is private
+    await backupDb.storage.updateBucket('silk-pms-backups', { public: true });
 
     // Upload file to storage
     const { error: uploadError } = await backupDb.storage
