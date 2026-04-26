@@ -18,6 +18,7 @@ export default function RatePlansPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState<RatePlan | null>(null);
+  const [filter, setFilter] = useState<'active' | 'inactive' | 'all'>('active');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -127,6 +128,12 @@ export default function RatePlansPage() {
     }
   };
 
+  const filteredPlans = ratePlans.filter(p => {
+    if (filter === 'active') return p.is_active;
+    if (filter === 'inactive') return !p.is_active;
+    return true;
+  });
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -164,9 +171,26 @@ export default function RatePlansPage() {
         </button>
       </div>
 
+      {/* Filter Tabs */}
+      <div className="flex gap-2">
+        {(['active', 'inactive', 'all'] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition capitalize ${
+              filter === f
+                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
+            }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
       {/* Rate Plans Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ratePlans.map((plan) => (
+        {filteredPlans.map((plan) => (
           <div key={plan.id} className="bg-slate-900 rounded-xl p-6 border border-slate-800">
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -222,7 +246,7 @@ export default function RatePlansPage() {
         ))}
       </div>
 
-      {ratePlans.length === 0 && (
+      {filteredPlans.length === 0 && (
         <div className="text-center py-12 text-slate-500">
           No rate plans yet. Create your first rate plan to get started.
         </div>

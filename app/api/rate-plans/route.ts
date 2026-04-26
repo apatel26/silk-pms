@@ -34,7 +34,6 @@ export async function GET() {
     const { data, error } = await supabase
       .from('rate_plans')
       .select('*')
-      .eq('is_active', true)
       .order('name', { ascending: true });
 
     if (error) throw error;
