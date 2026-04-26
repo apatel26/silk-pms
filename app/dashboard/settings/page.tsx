@@ -526,9 +526,12 @@ export default function SettingsPage() {
               id="backupYear"
               className="px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
-              {[2024, 2025, 2026, 2027, 2028].map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
+              {(() => {
+                const currentYear = new Date().getFullYear();
+                return [currentYear, currentYear - 1, currentYear - 2].map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ));
+              })()}
             </select>
             <button
               onClick={async () => {
