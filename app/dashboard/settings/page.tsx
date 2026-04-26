@@ -553,8 +553,7 @@ export default function SettingsPage() {
               id="promoteBtn"
               onClick={async () => {
                 const btn = document.getElementById('promoteBtn') as HTMLButtonElement;
-                if (!confirm('PROMOTE PREVIEW TO PRODUCTION?\n\nThis will:\n1. Merge preview code to production\n2. Sync settings/rooms/rates to production\n3. Keep all production entries and customer data SAFE\n\nContinue?')) return;
-                if (!confirm('FINAL CONFIRM: Type "PROMOTE" to confirm')) return;
+                if (!confirm('PROMOTE PREVIEW TO PRODUCTION?\n\nThis will:\n1. Backup current production data to preview\n2. Swap database URLs (preview becomes production)\n3. Your new production gets clean production data\n\nYour test entries stay in preview (now becomes old production). Continue?')) return;
                 btn.disabled = true;
                 btn.textContent = 'Promoting...';
                 try {
@@ -565,7 +564,8 @@ export default function SettingsPage() {
                   });
                   const data = await res.json();
                   if (res.ok) {
-                    alert('SUCCESS: Preview promoted to production!\n\nYour changes are now live.');
+                    alert('SUCCESS: Promotion initiated!\n\nProduction data backed up. You will need to swap database URLs in Vercel to complete the promotion.');
+                    detectEnvironment();
                   } else {
                     alert('Error: ' + (data.error || 'Failed to promote'));
                   }

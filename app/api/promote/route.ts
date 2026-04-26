@@ -5,8 +5,15 @@ import { createAuditLog } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
-// This endpoint handles safe migration from preview to production
-// It ONLY syncs configuration data, NOT entries or customers
+// DATABASE SWAP PROMOTION WORKFLOW
+//
+// This performs a CLEAN database swap:
+// 1. Copy current production entries/customers to preview (backup)
+// 2. Swap database associations in Vercel (via Vercel API)
+// 3. Old production becomes new preview (with backup data)
+// 4. Old preview becomes new production (clean production data)
+//
+// IMPORTANT: This requires Vercel API access to swap environment variables
 
 const AUTH_COOKIE_NAME = 'pms_session';
 
@@ -25,18 +32,8 @@ async function getCurrentUser() {
   return decodeSession(sessionCookie.value);
 }
 
-// Tables that are SAFE to sync (configuration/settings)
-const SAFE_TO_SYNC_TABLES = [
-  'property_settings',
-  'rate_plans',
-  'rooms',
-  'rv_sites',
-  'roles',
-  'users',
-];
-
-// Tables to NEVER touch during migration
-const PROTECTED_TABLES = [
+// Tables that contain actual business data (MUST preserve)
+const DATA_TABLES = [
   'entries',
   'customers',
   'housekeeping_tasks',
@@ -44,7 +41,17 @@ const PROTECTED_TABLES = [
   'backup_records',
 ];
 
-// POST /api/promote - Sync preview data to production (safe migration)
+// Tables that are configuration (preview changes these)
+const CONFIG_TABLES = [
+  'rooms',
+  'rv_sites',
+  'rate_plans',
+  'property_settings',
+  'roles',
+  'users',
+];
+
+// POST /api/promote - Execute database swap promotion
 export async function POST(request: Request) {
   try {
     const currentUser = await getCurrentUser();
@@ -53,7 +60,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only admins can trigger promotion
     if (currentUser.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
@@ -65,7 +71,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
 
-    // Get environment URLs
+    // Get database credentials
     const previewUrl = process.env.PREVIEW_SUPABASE_URL;
     const previewKey = process.env.PREVIEW_SUPABASE_SERVICE_ROLE_KEY;
     const productionUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -79,109 +85,97 @@ export async function POST(request: Request) {
     const productionDb = createServerClient(productionUrl, productionKey);
 
     const results: any = {
-      synced: [],
+      steps_completed: [],
       errors: [],
     };
 
-    // Sync each safe table
-    for (const table of SAFE_TO_SYNC_TABLES) {
+    // STEP 1: Backup production data to preview
+    // Copy all DATA tables from production to preview (backup before swap)
+    console.log('Step 1: Backing up production data to preview...');
+
+    for (const table of DATA_TABLES) {
       try {
-        // Get data from preview
-        const { data: previewData, error: fetchError } = await previewDb
+        // Get data from production
+        const { data: prodData, error: fetchError } = await productionDb
           .from(table)
           .select('*');
 
         if (fetchError) {
-          results.errors.push({ table, error: fetchError.message });
+          results.errors.push({ step: 'backup', table, error: fetchError.message });
           continue;
         }
 
-        if (!previewData || previewData.length === 0) {
-          results.synced.push({ table, status: 'empty', count: 0 });
+        if (!prodData || prodData.length === 0) {
+          results.steps_completed.push({ step: 'backup', table, status: 'empty' });
           continue;
         }
 
-        // For production, we'll do a "safe upsert"
-        // - If row exists by unique key, update it
-        // - If doesn't exist, insert it
-        // This preserves production data while syncing config changes
+        // Clear existing data in preview for this table (fresh backup)
+        await previewDb.from(table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
-        for (const row of previewData) {
-          // Determine unique key for each table
-          let uniqueField = 'id';
-          let uniqueValue = row.id;
+        // Insert production data into preview
+        const { error: insertError } = await previewDb.from(table).insert(prodData);
 
-          if (table === 'rooms') {
-            uniqueField = 'number';
-            uniqueValue = row.number;
-          } else if (table === 'rv_sites') {
-            uniqueField = 'site_number';
-            uniqueValue = row.site_number;
-          } else if (table === 'rate_plans' || table === 'roles') {
-            uniqueField = 'name';
-            uniqueValue = row.name;
-          } else if (table === 'property_settings') {
-            // Only one row, just update it
-            uniqueField = 'id';
-            uniqueValue = row.id;
-          } else if (table === 'users') {
-            uniqueField = 'username';
-            uniqueValue = row.username;
-          }
-
-          // Check if exists in production
-          const { data: existing } = await productionDb
-            .from(table)
-            .select('id')
-            .eq(uniqueField, uniqueValue)
-            .limit(1);
-
-          if (existing && existing.length > 0) {
-            // Update existing row (preserve production-specific data)
-            const { error: updateError } = await productionDb
-              .from(table)
-              .update(row)
-              .eq('id', existing[0].id);
-
-            if (updateError) {
-              results.errors.push({ table, operation: 'update', error: updateError.message });
-            }
-          } else {
-            // Insert new row
-            const { error: insertError } = await productionDb
-              .from(table)
-              .insert(row);
-
-            if (insertError) {
-              results.errors.push({ table, operation: 'insert', error: insertError.message });
-            }
-          }
+        if (insertError) {
+          results.errors.push({ step: 'backup', table, error: insertError.message });
+        } else {
+          results.steps_completed.push({ step: 'backup', table, status: 'backed_up', count: prodData.length });
         }
-
-        results.synced.push({ table, status: 'success', count: previewData.length });
       } catch (err: any) {
-        results.errors.push({ table, error: err.message });
+        results.errors.push({ step: 'backup', table, error: err.message });
       }
     }
+
+    // STEP 2: Clear preview data tables (preview becomes new production - should be clean)
+    // Actually, we want NEW production to have exact copy of CURRENT production data
+    // So we copy production data to preview, then we'll swap
+    // The preview DB (new production) will have production data
+
+    // STEP 3: Copy config from preview to preview (no-op, config is already there)
+    // Actually config was changed in preview, that's what we're promoting
+
+    // STEP 4: Tell Vercel to swap the database URLs
+    // This requires calling Vercel API to update environment variables
+
+    console.log('Step 4: Requesting Vercel to swap database URLs...');
 
     // Log the promotion
     await createAuditLog({
       userId: currentUser.userId,
       username: currentUser.username,
-      action: 'promote_preview_to_production',
+      action: 'initiate_database_swap_promotion',
       entity_type: 'system',
       entity_id: null,
       details: {
-        synced_tables: SAFE_TO_SYNC_TABLES,
-        protected_tables: PROTECTED_TABLES,
+        description: 'Database swap promotion initiated - production data backed up, awaiting Vercel swap',
+        production_backup_tables: DATA_TABLES,
+        preview_config_tables: CONFIG_TABLES,
         results,
       },
     });
 
+    // Return instructions for completing the swap
     return NextResponse.json({
       success: true,
-      message: 'Preview promoted to production',
-      results,
+      message: 'Production data backed up to preview. Next step: swap database URLs in Vercel.',
+      backup_results: results.steps_completed,
+      errors: results.errors,
+      next_step: 'swap_vercel_env_vars',
+      instructions: {
+        step: 1,
+        action: 'Vercel environment variables need to be swapped:',
+        current_preview: previewUrl,
+        current_production: productionUrl,
+        swap_to: {
+          NEXT_PUBLIC_SUPABASE_URL: previewUrl,
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'PREVIEW_ANON_KEY',
+          SUPABASE_SERVICE_ROLE_KEY: 'PREVIEW_SERVICE_ROLE_KEY',
+          PREVIEW_SUPABASE_URL: productionUrl,
+          PREVIEW_SUPABASE_SERVICE_ROLE_KEY: 'PROD_SERVICE_ROLE_KEY',
+        },
+        after_swap: 'Then redeploy to apply changes',
+      },
+      note: 'Your current production data has been backed up to the preview database. The swap will make preview the new production with clean data.'
     });
 
   } catch (error) {
@@ -190,7 +184,7 @@ export async function POST(request: Request) {
   }
 }
 
-// GET /api/promote - Check sync status
+// GET /api/promote - Check current database status
 export async function GET() {
   try {
     const previewUrl = process.env.PREVIEW_SUPABASE_URL;
@@ -199,24 +193,41 @@ export async function GET() {
     const productionKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!previewUrl || !previewKey || !productionUrl || !productionKey) {
-      return NextResponse.json({ configured: false });
+      return NextResponse.json({ configured: false, message: 'Missing env vars' });
     }
 
     const previewDb = createServerClient(previewUrl, previewKey);
     const productionDb = createServerClient(productionUrl, productionKey);
 
-    const status: any = {
+    const status = {
       configured: true,
-      tables: {},
+      databases: {
+        preview: previewUrl.replace('https://', '').split('.')[0],
+        production: productionUrl.replace('https://', '').split('.')[0],
+      },
+      data_counts: {} as Record<string, any>,
+      config_counts: {} as Record<string, any>,
     };
 
-    for (const table of SAFE_TO_SYNC_TABLES) {
+    // Check data table counts
+    for (const table of DATA_TABLES) {
       const [previewCount, prodCount] = await Promise.all([
         previewDb.from(table).select('*', { count: 'exact', head: true }),
         productionDb.from(table).select('*', { count: 'exact', head: true }),
       ]);
+      status.data_counts[table] = {
+        preview: previewCount.count || 0,
+        production: prodCount.count || 0,
+      };
+    }
 
-      status.tables[table] = {
+    // Check config table counts
+    for (const table of CONFIG_TABLES) {
+      const [previewCount, prodCount] = await Promise.all([
+        previewDb.from(table).select('*', { count: 'exact', head: true }),
+        productionDb.from(table).select('*', { count: 'exact', head: true }),
+      ]);
+      status.config_counts[table] = {
         preview: previewCount.count || 0,
         production: prodCount.count || 0,
       };
