@@ -95,37 +95,44 @@ jobs:
           git checkout main
           git fetch origin preview
           git merge origin/preview --no-edit
-          # Use gh auth to login and then git push with auth
           echo $GH_TOKEN | gh auth login --with-token
           gh api method GET repos/apatel26/silk-pms 2>/dev/null || true
           git push https://x-access-token:$GH_TOKEN@github.com/apatel26/silk-pms.git main
 
           echo "Code merged and pushed to main"
 
-      # Step 4: Wait for deployment and verify
+      # Step 4: Wait for production deployment
       - name: Wait for production deployment
         run: |
-          echo "Waiting for Vercel production deployment..."
+          echo "Waiting for Vercel production deployment to complete..."
           DEPLOYMENT_ID=""
-          for i in {1..30}; do
-            sleep 10
-            echo "Checking deployment... ($i/30)"
+          READY=false
 
-            # Check for latest production deployment
+          for i in {1..30}; do
             DEPLOYMENT=$(curl -s "https://api.vercel.com/v13/deployments?projectId=${{ secrets.VERCEL_PROJECT_ID }}&target=production" \
               -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}")
 
             STATE=$(echo $DEPLOYMENT | jq -r '.deployments[0].state' 2>/dev/null)
+            UID=$(echo $DEPLOYMENT | jq -r '.deployments[0].uid' 2>/dev/null)
+
+            echo "Check $i/30 - State: $STATE"
 
             if [ "$STATE" = "READY" ]; then
-              echo "Deployment is READY!"
-              DEPLOYMENT_ID=$(echo $DEPLOYMENT | jq -r '.deployments[0].id' 2>/dev/null)
+              echo "Deployment READY!"
+              DEPLOYMENT_ID="$UID"
+              READY=true
               break
             fi
+
+            sleep 10
           done
 
-          if [ -n "$DEPLOYMENT_ID" ]; then
-            echo "Production deployment: https://vercel.com/apatel26s-projects/silk-pms/$DEPLOYMENT_ID"
+          if [ "$READY" = true ] && [ -n "$DEPLOYMENT_ID" ]; then
+            echo "=============================================="
+            echo "Production deployed: https://vercel.com/apatel26s-projects/silk-pms/$DEPLOYMENT_ID"
+            echo "=============================================="
+          else
+            echo "Deployment check timed out - please verify manually"
           fi
 
       - name: Log promotion success
