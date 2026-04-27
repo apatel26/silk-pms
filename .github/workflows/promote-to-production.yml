@@ -89,14 +89,16 @@ jobs:
         run: |
           git config --global user.name "PMS Auto-Promote"
           git config --global user.email "automated@silk-pms"
-          # Remove the default auth header that actions/checkout sets
-          git config --global --unset-all http.https://github.com/.extraheader
-          # Set our own auth header with our PAT
-          git config --global http.https://github.com/.extraheader "Authorization: Bearer $GH_TOKEN"
+          # Override the default credential helper to prevent auth reuse
+          git config --global credential.helper store
+          # Write credentials to prevent Git from trying other auth methods
+          printf "https://x-access-token:%s\n" "$GH_TOKEN" > ~/.git-credentials-temp
+          # Unset the actions-provided auth header at LOCAL level (only place it exists)
+          git config --local http.https://github.com/.extraheader "AUTHORIZATION: Bearer $GH_TOKEN"
           git checkout main
           git fetch origin preview
           git merge origin/preview --no-edit
-          git push https://github.com/apatel26/silk-pms.git main
+          git push https://x-access-token:$GH_TOKEN@github.com/apatel26/silk-pms.git main
 
           echo "Code merged and pushed to main"
 
