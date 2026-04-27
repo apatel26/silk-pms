@@ -85,8 +85,8 @@ jobs:
         run: |
           git config user.name "PMS Auto-Promote"
           git config user.email "automated@silk-pms"
-          # Use HTTPS with token for authentication
-          git remote set-url origin https://github-actions[bot]:${{ secrets.GH_PAT }}@github.com/apatel26/silk-pms.git
+          # Use HTTPS with PAT for authentication (x-access-token is the standard username for PATs)
+          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/apatel26/silk-pms.git
 
       - name: Merge and push to main
         run: |
