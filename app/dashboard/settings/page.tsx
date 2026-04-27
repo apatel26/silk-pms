@@ -159,7 +159,6 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchSettings();
     fetchBackups();
-    detectEnvironment();
   }, []);
 
   const fetchSettings = async () => {
@@ -249,30 +248,7 @@ export default function SettingsPage() {
     }
   };
 
-  const detectEnvironment = async () => {
-    try {
-      const res = await fetch('/api/promote', { method: 'GET' });
-      if (res.ok) {
-        const data = await res.json();
-        const badge = document.getElementById('envBadge');
-        const status = document.getElementById('envStatus');
-        if (badge && status) {
-          if (data.configured) {
-            badge.textContent = 'Configured';
-            badge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400';
-            status.textContent = 'Preview and production databases connected';
-          } else {
-            badge.textContent = 'Not Configured';
-            badge.className = 'px-3 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400';
-            status.textContent = 'Environment variables may be missing';
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error detecting environment:', error);
-    }
-  };
-
+  
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -499,91 +475,6 @@ export default function SettingsPage() {
               onChange={(e) => handleChange('monthly_50amp', parseFloat(e.target.value) || 0)}
               className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
-          </div>
-        </div>
-      </div>
-
-      {/* Deployment Management */}
-      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-        <h3 className="text-lg font-semibold text-white mb-4">Deployment Management</h3>
-        <p className="text-sm text-slate-400 mb-4">
-          Preview deployment lets you test changes safely. Production data is protected during preview usage.
-        </p>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-slate-800 rounded-lg">
-            <div>
-              <p className="text-white font-medium">Current Environment</p>
-              <p id="envStatus" className="text-sm text-slate-400">Detecting...</p>
-            </div>
-            <span id="envBadge" className="px-3 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
-              Loading...
-            </span>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              id="syncPreviewBtn"
-              onClick={async () => {
-                const btn = document.getElementById('syncPreviewBtn') as HTMLButtonElement;
-                if (!confirm('Sync preview with current production data? This will update rooms, rates, and settings but NOT entries or customers.')) return;
-                btn.disabled = true;
-                btn.textContent = 'Syncing...';
-                try {
-                  const res = await fetch('/api/sync-preview', { method: 'POST' });
-                  const data = await res.json();
-                  if (res.ok) {
-                    alert('Preview synced with production data!');
-                  } else {
-                    alert('Error: ' + (data.error || 'Failed to sync'));
-                  }
-                } catch (error) {
-                  alert('Error: ' + String(error));
-                } finally {
-                  btn.disabled = false;
-                  btn.textContent = 'Sync Preview Data';
-                }
-              }}
-              className="px-4 py-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/20 hover:bg-blue-500/30 transition"
-            >
-              Sync Preview Data
-            </button>
-
-            <button
-              id="promoteBtn"
-              onClick={async () => {
-                const btn = document.getElementById('promoteBtn') as HTMLButtonElement;
-                if (!confirm('PROMOTE PREVIEW TO PRODUCTION?\n\nThis will:\n1. Backup current production data to preview\n2. Swap database URLs (preview becomes production)\n3. Your new production gets clean production data\n\nYour test entries stay in preview (now becomes old production). Continue?')) return;
-                btn.disabled = true;
-                btn.textContent = 'Promoting...';
-                try {
-                  const res = await fetch('/api/promote', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'promote_preview' }),
-                  });
-                  const data = await res.json();
-                  if (res.ok) {
-                    alert('SUCCESS: Promotion initiated!\n\nProduction data backed up. You will need to swap database URLs in Vercel to complete the promotion.');
-                    detectEnvironment();
-                  } else {
-                    alert('Error: ' + (data.error || 'Failed to promote'));
-                  }
-                } catch (error) {
-                  alert('Error: ' + String(error));
-                } finally {
-                  btn.disabled = false;
-                  btn.textContent = 'Promote to Production';
-                }
-              }}
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white font-medium hover:from-green-400 hover:to-emerald-400 transition"
-            >
-              Promote to Production
-            </button>
-          </div>
-
-          <div id="syncStatus" className="text-xs text-slate-500">
-            Synced tables: rooms, rv_sites, rate_plans, property_settings, users, roles
           </div>
         </div>
       </div>
