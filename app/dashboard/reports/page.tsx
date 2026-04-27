@@ -6,7 +6,6 @@ import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useTheme } from '@/lib/context/ThemeContext';
-import { StatsCard } from '@/components/ui/StatsCard';
 import {
   BarChart,
   Bar,
@@ -22,7 +21,6 @@ import {
   Line,
   Legend,
 } from 'recharts';
-import { StatsCardProps } from '@/components/ui/StatsCard';
 
 const GUEST_ROOMS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212];
 const RV_SITES = Array.from({ length: 15 }, (_, i) => i + 1);
@@ -512,55 +510,159 @@ export default function ReportsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <p className="text-sm text-slate-400">Total Revenue</p>
           <p className="text-3xl font-bold text-amber-400">${summary.netTotal.toFixed(2)}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <p className="text-sm text-slate-400">Guest Revenue</p>
           <p className="text-2xl font-bold text-white">${summary.totalGuest.toFixed(2)}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <p className="text-sm text-slate-400">RV Revenue</p>
           <p className="text-2xl font-bold text-blue-400">${summary.totalRV.toFixed(2)}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <p className="text-sm text-slate-400">Guest Rooms Sold</p>
           <p className="text-2xl font-bold text-white">{summary.totalGuestRooms}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <p className="text-sm text-slate-400">RV Sites Used</p>
           <p className="text-2xl font-bold text-white">{summary.totalRVSites}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <p className="text-sm text-slate-400">Total Entries</p>
           <p className="text-2xl font-bold text-white">{entries.length}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <p className="text-sm text-slate-400">Cash</p>
           <p className="text-2xl font-bold text-green-400">${summary.totalCash.toFixed(2)}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <p className="text-sm text-slate-400">Credit Card</p>
           <p className="text-2xl font-bold text-purple-400">${summary.totalCC.toFixed(2)}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <p className="text-sm text-slate-400">Refunds</p>
           <p className="text-2xl font-bold text-red-400">${summary.totalRefunds.toFixed(2)}</p>
         </div>
       </div>
 
+      {/* Analytics Charts Section */}
+      {reportType === 'analytics' && !loading && (occupancyData.length > 0 || revenueData.length > 0 || housekeepingData.length > 0) && (
+        <div className="space-y-6">
+          {/* Revenue Chart */}
+          {revenueData.length > 0 && (
+            <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
+              <h3 className="text-lg font-semibold text-white mb-4">Revenue Overview - {selectedYear}</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={revenueData.slice(0, 30)}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="date" tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={(val) => dayjs(val).format('MM/DD')} />
+                    <YAxis tick={{ fill: '#94a3b8' }} tickFormatter={(val) => `$${val}`} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                      formatter={(value: any) => [`$${value.toFixed(2)}`, 'Revenue']}
+                      labelFormatter={(label) => dayjs(label).format('MMM DD, YYYY')}
+                    />
+                    <Bar dataKey="guestRevenue" fill="#f59e0b" name="Guest Revenue" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="rvRevenue" fill="#3b82f6" name="RV Revenue" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Occupancy Chart */}
+          {occupancyData.length > 0 && (
+            <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
+              <h3 className="text-lg font-semibold text-white mb-4">Occupancy Rate - {selectedYear}</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={occupancyData.slice(0, 30)}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="date" tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={(val) => dayjs(val).format('MM/DD')} />
+                    <YAxis tick={{ fill: '#94a3b8' }} tickFormatter={(val) => `${val}%`} domain={[0, 100]} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                      labelFormatter={(label) => dayjs(label).format('MMM DD, YYYY')}
+                    />
+                    <Line type="monotone" dataKey="roomOccupancyRate" stroke="#f59e0b" strokeWidth={2} dot={false} name="Room Occupancy %" />
+                    <Line type="monotone" dataKey="siteOccupancyRate" stroke="#3b82f6" strokeWidth={2} dot={false} name="Site Occupancy %" />
+                    <Legend />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Housekeeping Chart */}
+          {housekeepingData.length > 0 && (
+            <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
+              <h3 className="text-lg font-semibold text-white mb-4">Housekeeping Completion - {selectedYear}</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={housekeepingData.slice(0, 30)}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="date" tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={(val) => dayjs(val).format('MM/DD')} />
+                    <YAxis tick={{ fill: '#94a3b8' }} tickFormatter={(val) => `${val}%`} domain={[0, 100]} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                      labelFormatter={(label) => dayjs(label).format('MMM DD, YYYY')}
+                    />
+                    <Bar dataKey="completionRate" fill="#22c55e" name="Completion %" radius={[4, 4, 0, 0]}>
+                      {housekeepingData.slice(0, 30).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.completionRate >= 80 ? '#22c55e' : entry.completionRate >= 50 ? '#f59e0b' : '#ef4444'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Analytics Summary Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className={isSilkUI ? 'glass-card p-4' : 'bg-slate-900 rounded-xl p-4 border border-slate-800'}>
+              <p className="text-sm text-slate-400">Avg Room Occupancy</p>
+              <p className="text-2xl font-bold text-amber-400">
+                {occupancyData.length > 0 ? Math.round(occupancyData.reduce((sum, d) => sum + d.roomOccupancyRate, 0) / occupancyData.length) : 0}%
+              </p>
+            </div>
+            <div className={isSilkUI ? 'glass-card p-4' : 'bg-slate-900 rounded-xl p-4 border border-slate-800'}>
+              <p className="text-sm text-slate-400">Avg Site Occupancy</p>
+              <p className="text-2xl font-bold text-blue-400">
+                {occupancyData.length > 0 ? Math.round(occupancyData.reduce((sum, d) => sum + d.siteOccupancyRate, 0) / occupancyData.length) : 0}%
+              </p>
+            </div>
+            <div className={isSilkUI ? 'glass-card p-4' : 'bg-slate-900 rounded-xl p-4 border border-slate-800'}>
+              <p className="text-sm text-slate-400">Total Revenue</p>
+              <p className="text-2xl font-bold text-green-400">
+                ${revenueData.reduce((sum, d) => sum + d.totalRevenue, 0).toFixed(2)}
+              </p>
+            </div>
+            <div className={isSilkUI ? 'glass-card p-4' : 'bg-slate-900 rounded-xl p-4 border border-slate-800'}>
+              <p className="text-sm text-slate-400">Housekeeping Rate</p>
+              <p className="text-2xl font-bold text-emerald-400">
+                {housekeepingData.length > 0 ? Math.round(housekeepingData.reduce((sum, d) => sum + d.completionRate, 0) / housekeepingData.length) : 0}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tax Breakdown */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <p className="text-sm text-slate-400">City Tax (7%)</p>
           <p className="text-xl font-bold text-white">${summary.totalGuestTaxC.toFixed(2)}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <p className="text-sm text-slate-400">State Tax (6%)</p>
           <p className="text-xl font-bold text-white">${summary.totalGuestTaxS.toFixed(2)}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <p className="text-sm text-slate-400">Pet Fees Collected</p>
           <p className="text-xl font-bold text-white">${summary.totalGuestPetFees.toFixed(2)}</p>
         </div>
@@ -600,14 +702,14 @@ export default function ReportsPage() {
       </div>
 
       {/* Yearly Reset Section */}
-      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+      <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
         <h3 className="text-lg font-semibold text-white mb-4">Yearly Reset</h3>
         <p className="text-sm text-slate-400 mb-4">
           Yearly reset creates a backup of all {selectedYear} entries before clearing them. Use this at the end of the year.
         </p>
         <button
           onClick={handleYearlyReset}
-          className="px-4 py-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition"
+          className={`px-4 py-2 rounded-lg transition ${isSilkUI ? 'btn-liquid' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'}`}
         >
           Reset {selectedYear} Data
         </button>
@@ -615,7 +717,7 @@ export default function ReportsPage() {
 
       {/* Entries Table */}
       {entries.length > 0 && (
-        <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
           <h3 className="text-lg font-semibold text-white mb-4">All Entries</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-white">

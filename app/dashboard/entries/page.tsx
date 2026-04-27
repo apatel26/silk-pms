@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
+import { useTheme } from '@/lib/context/ThemeContext';
+import { GlassCard, GlassModal, GlassHeader } from '@/components/ui/Glass';
+import { StatsCard } from '@/components/ui/StatsCard';
 
 const GUEST_ROOMS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212];
 const RV_SITES = Array.from({ length: 15 }, (_, i) => i + 1);
@@ -82,6 +85,7 @@ interface Settings {
 const DEFAULT_PET_FEE = 20;
 
 export default function EntriesPage() {
+  const { isSilkUI } = useTheme();
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -490,14 +494,14 @@ export default function EntriesPage() {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-4 py-2 rounded-lg glass-input"
             />
             <button
               onClick={() => {
                 resetForm();
                 setShowModal(true);
               }}
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-semibold hover:from-amber-400 hover:to-amber-500 transition whitespace-nowrap"
+              className={`px-4 py-2 rounded-lg font-semibold transition whitespace-nowrap ${isSilkUI ? 'btn-liquid' : 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 hover:from-amber-400 hover:to-amber-500'}`}
             >
               + Add Entry
             </button>
@@ -507,27 +511,27 @@ export default function EntriesPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-4' : 'bg-slate-900 rounded-xl p-4 border border-slate-800'}>
           <p className="text-sm text-slate-400">Guest Rooms</p>
           <p className="text-2xl font-bold text-white">{summary.numGuestRooms}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-4' : 'bg-slate-900 rounded-xl p-4 border border-slate-800'}>
           <p className="text-sm text-slate-400">RV Sites</p>
           <p className="text-2xl font-bold text-white">{summary.numRVSites}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-4' : 'bg-slate-900 rounded-xl p-4 border border-slate-800'}>
           <p className="text-sm text-slate-400">Guest Total</p>
           <p className="text-2xl font-bold text-amber-400">${summary.totalGuest.toFixed(2)}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-4' : 'bg-slate-900 rounded-xl p-4 border border-slate-800'}>
           <p className="text-sm text-slate-400">RV Total</p>
           <p className="text-2xl font-bold text-blue-400">${summary.totalRV.toFixed(2)}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-4' : 'bg-slate-900 rounded-xl p-4 border border-slate-800'}>
           <p className="text-sm text-slate-400">Cash</p>
           <p className="text-2xl font-bold text-green-400">${summary.totalCash.toFixed(2)}</p>
         </div>
-        <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+        <div className={isSilkUI ? 'glass-card p-4' : 'bg-slate-900 rounded-xl p-4 border border-slate-800'}>
           <p className="text-sm text-slate-400">Credit Card</p>
           <p className="text-2xl font-bold text-purple-400">${summary.totalCC.toFixed(2)}</p>
         </div>
@@ -539,8 +543,8 @@ export default function EntriesPage() {
           onClick={() => setView('guests')}
           className={`px-4 py-2 rounded-lg font-medium transition ${
             view === 'guests'
-              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-              : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
+              ? isSilkUI ? 'bg-primary/10 text-primary border border-primary/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+              : isSilkUI ? 'glass-button' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
           }`}
         >
           Guest Rooms (101-212)
@@ -549,8 +553,8 @@ export default function EntriesPage() {
           onClick={() => setView('rv')}
           className={`px-4 py-2 rounded-lg font-medium transition ${
             view === 'rv'
-              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-              : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
+              ? isSilkUI ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+              : isSilkUI ? 'glass-button' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
           }`}
         >
           RV Sites (1-15)
@@ -568,8 +572,8 @@ export default function EntriesPage() {
                 onClick={() => entry ? handleEdit(entry) : (resetForm(), setFormData({ ...formData, entry_type: 'guest', room_number: String(roomNum) }), setShowModal(true))}
                 className={`relative p-4 rounded-xl border transition ${
                   entry
-                    ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20'
-                    : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                    ? isSilkUI ? 'glass-card border-primary/30 hover:border-primary/50' : 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20'
+                    : isSilkUI ? 'glass-card border-border hover:border-primary/30' : 'bg-slate-900 border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <p className="text-lg font-bold text-white">{roomNum}</p>
@@ -602,8 +606,8 @@ export default function EntriesPage() {
                 onClick={() => entry ? handleEdit(entry) : (resetForm(), setFormData({ ...formData, entry_type: 'rv', site_number: String(siteNum) }), setShowModal(true))}
                 className={`relative p-3 rounded-xl border transition ${
                   entry
-                    ? 'bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20'
-                    : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                    ? isSilkUI ? 'glass-card border-blue-500/30 hover:border-blue-500/50' : 'bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20'
+                    : isSilkUI ? 'glass-card border-border hover:border-blue-500/30' : 'bg-slate-900 border-slate-800 hover:border-slate-700'
                 }`}
               >
                 <p className="text-sm font-bold text-white">RV {siteNum}</p>
@@ -626,15 +630,16 @@ export default function EntriesPage() {
 
       {/* Entry Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-slate-700">
-            <div className="sticky top-0 bg-slate-900 px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className={`relative w-full max-w-lg max-h-[90vh] overflow-y-auto ${isSilkUI ? 'glass-modal' : 'bg-slate-900 rounded-2xl border border-slate-700'} animate-spring-in`}>
+            <div className={`sticky top-0 px-6 py-4 flex items-center justify-between ${isSilkUI ? 'glass-header' : 'bg-slate-900 border-b border-slate-700'}`}>
               <h3 className="text-xl font-bold text-white">
                 {editingEntry ? 'Edit Entry' : 'Add Entry'}
               </h3>
               <button
                 onClick={resetForm}
-                className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                className={`p-2 rounded-lg transition ${isSilkUI ? 'hover:bg-white/10' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

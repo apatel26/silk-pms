@@ -11,9 +11,9 @@ import {
   useSensor,
   useSensors,
   PointerSensor,
-  useSortable,
+  useDraggable,
 } from '@dnd-kit/core';
-import { useDraggable } from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
 
 interface Entry {
   id: string;
@@ -348,14 +348,12 @@ export default function DashboardPage() {
             value={`${stats.occupiedRooms + stats.occupiedSites}`}
             icon={<span className="text-xl">🏠</span>}
             variant="success"
-            helper="of 39 units"
           />
           <StatsCard
             label="Active Guests"
             value={`${stats.todayGuests + stats.todayRV}`}
             icon={<span className="text-xl">🚐</span>}
             variant="default"
-            helper={`${stats.todayGuests} rooms, ${stats.todayRV} RV`}
           />
         </div>
 

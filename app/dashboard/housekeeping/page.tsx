@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
+import { useTheme } from '@/lib/context/ThemeContext';
 
 const GUEST_ROOMS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212];
 
@@ -33,6 +34,7 @@ interface TowelForm {
 }
 
 export default function HousekeepingPage() {
+  const { isSilkUI } = useTheme();
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [tasks, setTasks] = useState<HousekeepingTask[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -414,8 +416,8 @@ export default function HousekeepingPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Housekeeping</h1>
-          <p className="text-slate-400">Click a room to cycle its status</p>
+          <h1 className="text-2xl font-bold" style={{ color: 'hsl(var(--text-primary))' }}>Housekeeping</h1>
+          <p style={{ color: 'hsl(var(--text-secondary))' }}>Click a room to cycle its status</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -444,12 +446,12 @@ export default function HousekeepingPage() {
       </div>
 
       {/* Date Selection */}
-      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+      <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSelectedDate(dayjs(selectedDate).subtract(1, 'day').format('YYYY-MM-DD'))}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white"
+              className={`p-2 rounded-lg transition ${isSilkUI ? 'glass-button' : 'bg-slate-800 hover:bg-slate-700 text-white'}`}
             >
               ←
             </button>
@@ -457,11 +459,11 @@ export default function HousekeepingPage() {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-4 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="px-4 py-2 rounded-lg glass-input"
             />
             <button
               onClick={() => setSelectedDate(dayjs(selectedDate).add(1, 'day').format('YYYY-MM-DD'))}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white"
+              className={`p-2 rounded-lg transition ${isSilkUI ? 'glass-button' : 'bg-slate-800 hover:bg-slate-700 text-white'}`}
             >
               →
             </button>
@@ -511,7 +513,7 @@ export default function HousekeepingPage() {
       </div>
 
       {/* Room Grid */}
-      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800" id="printable-area">
+      <div className={isSilkUI ? 'glass-card p-6' : 'bg-slate-900 rounded-xl p-6 border border-slate-800'} id="printable-area">
         {loading ? (
           <div className="text-center text-slate-400 py-8">Loading...</div>
         ) : (
