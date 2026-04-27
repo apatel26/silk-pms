@@ -78,6 +78,7 @@ jobs:
       - name: Wait for deployment
         run: |
           echo "Waiting for Vercel production deployment..."
+          DEPLOY_DONE=false
           for i in {1..30}; do
             DEPLOYMENT=$(curl -s "https://api.vercel.com/v13/deployments?projectId=${{ secrets.VERCEL_PROJECT_ID }}&target=production" \
               -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}")
@@ -85,11 +86,18 @@ jobs:
             DEPLOY_UID=$(echo $DEPLOYMENT | jq -r '.deployments[0].uid' 2>/dev/null)
             echo "Check $i/30 - State: $STATE"
             if [ "$STATE" = "READY" ]; then
-              echo "Deployment READY: https://vercel.com/apatel26s-projects/silk-pms/$DEPLOY_UID"
+              echo "=============================================="
+              echo "Deployment READY!"
+              echo "URL: https://vercel.com/apatel26s-projects/silk-pms/$DEPLOY_UID"
+              echo "=============================================="
+              DEPLOY_DONE=true
               break
             fi
             sleep 10
           done
+          if [ "$DEPLOY_DONE" = false ]; then
+            echo "Deployment check completed - please verify manually"
+          fi
 
       - name: Complete
         run: |
