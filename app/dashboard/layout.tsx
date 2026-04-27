@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { ThemeProvider, useTheme } from '@/lib/context/ThemeContext';
 
 interface User {
   id: string;
@@ -17,13 +18,14 @@ interface Settings {
   logo_url: string | null;
 }
 
-export default function DashboardLayout({
+function DashboardContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { isSilkUI } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -82,7 +84,6 @@ export default function DashboardLayout({
     { href: '/dashboard/settings', label: 'Settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
   ];
 
-  // Admin-only items
   const adminItems = [
     { href: '/dashboard/users', label: 'Users', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
     { href: '/dashboard/rates', label: 'Rate Plans', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
@@ -92,7 +93,7 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--bg-primary))' }}>
         <div className="flex flex-col items-center gap-4">
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden ${logoUrl ? '' : 'bg-gradient-to-br from-amber-400 to-amber-600'}`}>
             {logoUrl ? (
@@ -101,7 +102,7 @@ export default function DashboardLayout({
               <span className="text-sm font-bold text-slate-900">{propertyName.substring(0, 2).toUpperCase()}</span>
             )}
           </div>
-          <div className="flex items-center gap-2 text-slate-400">
+          <div className="flex items-center gap-2" style={{ color: 'hsl(var(--text-secondary))' }}>
             <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -114,9 +115,9 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--bg-primary))' }}>
       {/* Top Navigation */}
-      <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800">
+      <header className={`sticky top-0 z-50 ${isSilkUI ? 'glass-panel' : 'bg-surface/80 backdrop-blur-xl border-b border-border'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             {/* Logo & Brand */}
@@ -129,8 +130,8 @@ export default function DashboardLayout({
                 )}
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-sm font-semibold text-white">{propertyName}</h1>
-                <p className="text-xs text-amber-400">& RV Park</p>
+                <h1 className="text-sm font-semibold" style={{ color: 'hsl(var(--text-primary))' }}>{propertyName}</h1>
+                <p className="text-xs" style={{ color: 'hsl(var(--accent))' }}>& RV Park</p>
               </div>
             </div>
 
@@ -144,8 +145,8 @@ export default function DashboardLayout({
                     href={item.href}
                     className={`px-3 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
                       isActive
-                        ? 'bg-amber-500/10 text-amber-400'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                        ? 'bg-primary/10 text-primary'
+                        : 'hover:bg-surface text-text-secondary hover:text-text-primary'
                     }`}
                   >
                     {item.label}
@@ -154,7 +155,7 @@ export default function DashboardLayout({
               })}
               {user?.role === 'admin' && (
                 <>
-                  <div className="w-px h-6 bg-slate-700 mx-1" />
+                  <div className="w-px h-6 bg-border mx-1" />
                   {adminItems.map((item) => {
                     const isActive = pathname === item.href;
                     return (
@@ -163,8 +164,8 @@ export default function DashboardLayout({
                         href={item.href}
                         className={`px-3 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
                           isActive
-                            ? 'bg-amber-500/10 text-amber-400'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            ? 'bg-primary/10 text-primary'
+                            : 'hover:bg-surface text-text-secondary hover:text-text-primary'
                         }`}
                       >
                         {item.label}
@@ -186,12 +187,13 @@ export default function DashboardLayout({
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium text-white">{user?.fullName || user?.username}</p>
-                  <p className="text-xs text-slate-400 capitalize">{user?.role}</p>
+                  <p className="text-sm font-medium" style={{ color: 'hsl(var(--text-primary))' }}>{user?.fullName || user?.username}</p>
+                  <p className="text-xs capitalize" style={{ color: 'hsl(var(--text-secondary))' }}>{user?.role}</p>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  className="p-2 rounded-lg transition hover:bg-surface"
+                  style={{ color: 'hsl(var(--text-secondary))' }}
                   title="Logout"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,7 +205,8 @@ export default function DashboardLayout({
               {/* Mobile menu button */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                className="lg:hidden p-2 rounded-lg transition hover:bg-surface"
+                style={{ color: 'hsl(var(--text-secondary))' }}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   {mobileMenuOpen ? (
@@ -219,7 +222,7 @@ export default function DashboardLayout({
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-slate-800 bg-slate-900">
+          <div className="lg:hidden border-t border-border bg-surface">
             <div className="px-4 py-3 space-y-1">
               {[...navItems, ...(user?.role === 'admin' ? adminItems : [])].map((item) => {
                 const isActive = pathname === item.href;
@@ -230,8 +233,8 @@ export default function DashboardLayout({
                     onClick={() => setMobileMenuOpen(false)}
                     className={`block px-4 py-3 rounded-lg text-sm font-medium transition ${
                       isActive
-                        ? 'bg-amber-500/10 text-amber-400'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-surface'
                     }`}
                   >
                     {item.label}
@@ -240,7 +243,7 @@ export default function DashboardLayout({
               })}
               <button
                 onClick={handleLogout}
-                className="block w-full text-left px-4 py-3 rounded-lg text-sm font-medium text-red-400 hover:bg-slate-800 transition"
+                className="block w-full text-left px-4 py-3 rounded-lg text-sm font-medium text-error hover:bg-surface transition"
               >
                 Logout
               </button>
@@ -254,5 +257,17 @@ export default function DashboardLayout({
         {children}
       </main>
     </div>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <ThemeProvider>
+      <DashboardContent>{children}</DashboardContent>
+    </ThemeProvider>
   );
 }

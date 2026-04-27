@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTheme, type ThemeName, type UIStyle } from '@/lib/context/ThemeContext';
+import { THEMES } from '@/lib/types';
 
 interface Settings {
   name: string;
@@ -13,6 +15,107 @@ interface Settings {
   weekly_50amp: number;
   monthly_30amp: number;
   monthly_50amp: number;
+  ui_theme?: ThemeName;
+  ui_style?: UIStyle;
+}
+
+// Theme selector component
+function ThemeSelector() {
+  const { theme, uiStyle, setTheme, setUIStyle, isSilkUI } = useTheme();
+  const [selectedTheme, setSelectedTheme] = useState<ThemeName>(theme);
+  const [selectedStyle, setSelectedStyle] = useState<UIStyle>(uiStyle);
+
+  useEffect(() => {
+    setSelectedTheme(theme);
+    setSelectedStyle(uiStyle);
+  }, [theme, uiStyle]);
+
+  const handleThemeChange = (newTheme: ThemeName) => {
+    setSelectedTheme(newTheme);
+    setTheme(newTheme);
+  };
+
+  const handleStyleChange = (newStyle: UIStyle) => {
+    setSelectedStyle(newStyle);
+    setUIStyle(newStyle);
+  };
+
+  return (
+    <div className="glass-card p-6">
+      <h3 className="text-lg font-semibold mb-4" style={{ color: 'hsl(var(--text-primary))' }}>Appearance</h3>
+
+      {/* UI Style Toggle */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium mb-3" style={{ color: 'hsl(var(--text-secondary))' }}>Interface Style</label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => handleStyleChange('legacy')}
+            className={`p-4 rounded-xl border transition-all ${
+              selectedStyle === 'legacy'
+                ? 'border-primary bg-primary/10'
+                : 'border-border hover:border-border-light'
+            }`}
+          >
+            <div className="text-left">
+              <p className="font-medium" style={{ color: 'hsl(var(--text-primary))' }}>Classic</p>
+              <p className="text-xs mt-1" style={{ color: 'hsl(var(--text-secondary))' }}>Standard dark theme</p>
+            </div>
+          </button>
+          <button
+            onClick={() => handleStyleChange('silk')}
+            className={`p-4 rounded-xl border transition-all ${
+              selectedStyle === 'silk'
+                ? 'border-primary bg-primary/10'
+                : 'border-border hover:border-border-light'
+            }`}
+          >
+            <div className="text-left">
+              <p className="font-medium" style={{ color: 'hsl(var(--text-primary))' }}>Silk UI</p>
+              <p className="text-xs mt-1" style={{ color: 'hsl(var(--text-secondary))' }}>Apple Liquid Glass</p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Theme Selection */}
+      <div>
+        <label className="block text-sm font-medium mb-3" style={{ color: 'hsl(var(--text-secondary))' }}>Color Theme</label>
+        <div className="grid grid-cols-3 gap-3">
+          {(Object.keys(THEMES) as ThemeName[]).map((themeKey) => {
+            const themeConfig = THEMES[themeKey];
+            const isSelected = selectedTheme === themeKey;
+            return (
+              <button
+                key={themeKey}
+                onClick={() => handleThemeChange(themeKey)}
+                className={`relative p-3 rounded-xl border transition-all ${
+                  isSelected ? 'border-primary scale-105' : 'border-border hover:border-border-light'
+                }`}
+              >
+                <div
+                  className="w-full h-10 rounded-lg mb-2"
+                  style={{
+                    background: `linear-gradient(135deg, hsl(${themeConfig.background.split(' ')[0]} ${themeConfig.background.split(' ')[1]} ${themeConfig.background.split(' ')[2]}),
+                      hsl(${themeConfig.surface.split(' ')[0]} ${themeConfig.surface.split(' ')[1]} ${themeConfig.surface.split(' ')[2]}))`,
+                  }}
+                />
+                <p className="text-xs font-medium text-center" style={{ color: 'hsl(var(--text-primary))' }}>
+                  {themeConfig.label}
+                </p>
+                {isSelected && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                    <svg className="w-3 h-3 text-slate-900" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface UserProfilePhotoSectionProps {
@@ -98,8 +201,8 @@ function UserProfilePhotoSection({ userId, currentPhoto, username }: UserProfile
   };
 
   return (
-    <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-      <h3 className="text-lg font-semibold text-white mb-4">Your Profile Photo</h3>
+    <div className="glass-card p-6">
+      <h3 className="text-lg font-semibold mb-4" style={{ color: 'hsl(var(--text-primary))' }}>Your Profile Photo</h3>
       <div className="flex items-center gap-6">
         <div className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
           {photoUrl ? (
@@ -119,7 +222,7 @@ function UserProfilePhotoSection({ userId, currentPhoto, username }: UserProfile
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="px-4 py-2 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition disabled:opacity-50"
+            className="px-4 py-2 rounded-lg background: bg-surface/80 backdrop-blur-xl border border-border text-text-secondary hover:text-text-primary hover:bg-surface transition disabled:opacity-50"
           >
             {uploading ? 'Uploading...' : 'Upload Photo'}
           </button>
@@ -131,7 +234,7 @@ function UserProfilePhotoSection({ userId, currentPhoto, username }: UserProfile
               Remove photo
             </button>
           )}
-          <p className="text-xs text-slate-500 mt-2">PNG, JPG up to 2MB</p>
+          <p style={{ color: 'hsl(var(--text-secondary))' }}>PNG, JPG up to 2MB</p>
         </div>
       </div>
     </div>
@@ -186,6 +289,8 @@ export default function SettingsPage() {
         weekly_50amp: data.weekly_50amp || 230,
         monthly_30amp: data.monthly_30amp || 400,
         monthly_50amp: data.monthly_50amp || 500,
+        ui_theme: data.ui_theme || 'dark',
+        ui_style: data.ui_style || 'legacy',
       });
       setLogoUrl(data.logo_url || '');
     } catch (error) {
@@ -327,13 +432,16 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
-        <p className="text-slate-400">Configure your property settings</p>
+        <h1 className="text-2xl font-bold" style={{ color: 'hsl(var(--text-primary))' }}>Settings</h1>
+        <p style={{ color: 'hsl(var(--text-secondary))' }}>Configure your property settings</p>
       </div>
 
+      {/* Theme Selector */}
+      <ThemeSelector />
+
       {/* Property Information */}
-      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-        <h3 className="text-lg font-semibold text-white mb-4">Property Information</h3>
+      <div className="glass-card p-6">
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'hsl(var(--text-primary))' }}>Property Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Property Name</label>
@@ -341,7 +449,7 @@ export default function SettingsPage() {
               type="text"
               value={settings.name}
               onChange={(e) => handleChange('name', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 rounded-xl bg-surface/50 border border-border-light text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
           <div>
@@ -350,7 +458,7 @@ export default function SettingsPage() {
               type="text"
               value={settings.phone}
               onChange={(e) => handleChange('phone', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 rounded-xl bg-surface/50 border border-border-light text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
               placeholder="(555) 123-4567"
             />
           </div>
@@ -360,7 +468,7 @@ export default function SettingsPage() {
               type="text"
               value={settings.address}
               onChange={(e) => handleChange('address', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 rounded-xl bg-surface/50 border border-border-light text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
               placeholder="123 Main Street, City, State 12345"
             />
           </div>
@@ -368,8 +476,8 @@ export default function SettingsPage() {
       </div>
 
       {/* Logo Upload */}
-      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-        <h3 className="text-lg font-semibold text-white mb-4">Logo</h3>
+      <div className="glass-card p-6">
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'hsl(var(--text-primary))' }}>Logo</h3>
         <div className="flex items-center gap-6">
           <div className={`w-24 h-24 rounded-xl flex items-center justify-center overflow-hidden ${logoUrl ? 'bg-transparent' : 'bg-gradient-to-br from-amber-400 to-amber-600'}`}>
             {logoUrl ? (
@@ -388,11 +496,11 @@ export default function SettingsPage() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition"
+              className="px-4 py-2 rounded-lg background: bg-surface/80 backdrop-blur-xl border border-border text-text-secondary hover:text-text-primary hover:bg-surface transition"
             >
               {saving ? 'Uploading...' : 'Upload Logo'}
             </button>
-            <p className="text-xs text-slate-500 mt-2">PNG, JPG up to 2MB</p>
+            <p style={{ color: 'hsl(var(--text-secondary))' }}>PNG, JPG up to 2MB</p>
             {logoUrl && (
               <button
                 onClick={() => setLogoUrl('')}
@@ -406,8 +514,8 @@ export default function SettingsPage() {
       </div>
 
       {/* Tax Rates */}
-      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-        <h3 className="text-lg font-semibold text-white mb-4">Tax Rates (%)</h3>
+      <div className="glass-card p-6">
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'hsl(var(--text-primary))' }}>Tax Rates (%)</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">City Tax (%)</label>
@@ -418,7 +526,7 @@ export default function SettingsPage() {
               max="100"
               value={settings.city_tax_rate}
               onChange={(e) => handleChange('city_tax_rate', parseFloat(e.target.value) || 0)}
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 rounded-xl bg-surface/50 border border-border-light text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
           <div>
@@ -430,15 +538,15 @@ export default function SettingsPage() {
               max="100"
               value={settings.state_tax_rate}
               onChange={(e) => handleChange('state_tax_rate', parseFloat(e.target.value) || 0)}
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 rounded-xl bg-surface/50 border border-border-light text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
         </div>
       </div>
 
       {/* RV Rates */}
-      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-        <h3 className="text-lg font-semibold text-white mb-4">RV Rates</h3>
+      <div className="glass-card p-6">
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'hsl(var(--text-primary))' }}>RV Rates</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Weekly 30 AMP ($)</label>
@@ -446,7 +554,7 @@ export default function SettingsPage() {
               type="number"
               value={settings.weekly_30amp}
               onChange={(e) => handleChange('weekly_30amp', parseFloat(e.target.value) || 0)}
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 rounded-xl bg-surface/50 border border-border-light text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
           <div>
@@ -455,7 +563,7 @@ export default function SettingsPage() {
               type="number"
               value={settings.weekly_50amp}
               onChange={(e) => handleChange('weekly_50amp', parseFloat(e.target.value) || 0)}
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 rounded-xl bg-surface/50 border border-border-light text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
           <div>
@@ -464,7 +572,7 @@ export default function SettingsPage() {
               type="number"
               value={settings.monthly_30amp}
               onChange={(e) => handleChange('monthly_30amp', parseFloat(e.target.value) || 0)}
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 rounded-xl bg-surface/50 border border-border-light text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
           <div>
@@ -473,16 +581,16 @@ export default function SettingsPage() {
               type="number"
               value={settings.monthly_50amp}
               onChange={(e) => handleChange('monthly_50amp', parseFloat(e.target.value) || 0)}
-              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 rounded-xl bg-surface/50 border border-border-light text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
         </div>
       </div>
 
       {/* Factory Reset */}
-      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-        <h3 className="text-lg font-semibold text-white mb-4">Factory Reset</h3>
-        <p className="text-sm text-slate-400 mb-4">
+      <div className="glass-card p-6">
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'hsl(var(--text-primary))' }}>Factory Reset</h3>
+        <p className="text-sm mb-4" style={{ color: 'hsl(var(--text-secondary))' }}>
           Factory reset will delete all entries, housekeeping tasks, audit logs, and customer data. This action cannot be undone. Users, rooms, and settings will be preserved.
         </p>
         <button
@@ -515,9 +623,9 @@ export default function SettingsPage() {
       <UserProfilePhotoSection />
 
       {/* Cloud Backup */}
-      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
-        <h3 className="text-lg font-semibold text-white mb-4">Cloud Backup</h3>
-        <p className="text-sm text-slate-400 mb-4">
+      <div className="glass-card p-6">
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'hsl(var(--text-primary))' }}>Cloud Backup</h3>
+        <p className="text-sm mb-4" style={{ color: 'hsl(var(--text-secondary))' }}>
           Backup your data to a separate Supabase database for safekeeping.
         </p>
 
@@ -582,7 +690,7 @@ export default function SettingsPage() {
               />
               <button
                 onClick={() => document.getElementById('restoreFile')?.click()}
-                className="px-4 py-2 rounded-lg bg-slate-800 text-white hover:bg-slate-700 transition text-sm"
+                className="px-4 py-2 rounded-lg background: bg-surface/80 backdrop-blur-xl border border-border text-text-secondary hover:text-text-primary hover:bg-surface transition text-sm"
               >
                 Select Backup File
               </button>

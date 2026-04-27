@@ -5,6 +5,24 @@ import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useTheme } from '@/lib/context/ThemeContext';
+import { StatsCard } from '@/components/ui/StatsCard';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  Legend,
+} from 'recharts';
+import { StatsCardProps } from '@/components/ui/StatsCard';
 
 const GUEST_ROOMS = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212];
 const RV_SITES = Array.from({ length: 15 }, (_, i) => i + 1);
@@ -39,12 +57,16 @@ interface Entry {
 }
 
 export default function ReportsPage() {
+  const { isSilkUI } = useTheme();
   const currentYear = dayjs().format('YYYY');
-  const [reportType, setReportType] = useState<'monthly' | 'yearly'>('monthly');
+  const [reportType, setReportType] = useState<'monthly' | 'yearly' | 'analytics'>('monthly');
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [occupancyData, setOccupancyData] = useState<any[]>([]);
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [housekeepingData, setHousekeepingData] = useState<any[]>([]);
 
   // Generate list of years for dropdown (current year + 2 years back)
   const getYearOptions = () => {
@@ -71,7 +93,41 @@ export default function ReportsPage() {
 
   useEffect(() => {
     fetchEntries();
+    if (reportType === 'analytics') {
+      fetchAnalytics();
+    }
   }, [selectedYear, selectedMonth, reportType]);
+
+  const fetchAnalytics = async () => {
+    setLoading(true);
+    try {
+      const startDate = `${selectedYear}-01-01`;
+      const endDate = `${selectedYear}-12-31`;
+
+      const [occRes, revRes, hkRes] = await Promise.all([
+        fetch(`/api/analytics/occupancy?start=${startDate}&end=${endDate}`),
+        fetch(`/api/analytics/revenue?start=${startDate}&end=${endDate}`),
+        fetch(`/api/analytics/housekeeping?start=${startDate}&end=${endDate}`),
+      ]);
+
+      if (occRes.ok) {
+        const occData = await occRes.json();
+        setOccupancyData(occData.data || []);
+      }
+      if (revRes.ok) {
+        const revData = await revRes.json();
+        setRevenueData(revData.data || []);
+      }
+      if (hkRes.ok) {
+        const hkData = await hkRes.json();
+        setHousekeepingData(hkData.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchEntries = async () => {
     setLoading(true);
@@ -375,29 +431,29 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Reports</h1>
-          <p className="text-slate-400">Generate reports for your accountant</p>
+          <h1 className="text-2xl font-bold" style={{ color: 'hsl(var(--text-primary))' }}>Reports & Analytics</h1>
+          <p style={{ color: 'hsl(var(--text-secondary))' }}>Generate reports for your accountant</p>
         </div>
       </div>
 
       {/* Report Type & Date Selection */}
-      <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
+      <div className={isSilkUI ? 'glass-card p-6' : 'legacy-card p-6'}>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Report Type</label>
-            <div className="flex gap-2">
-              {(['monthly', 'yearly'] as const).map((type) => (
+            <label className="block text-sm font-medium mb-2" style={{ color: 'hsl(var(--text-secondary))' }}>Report Type</label>
+            <div className="flex gap-2 flex-wrap">
+              {(['monthly', 'yearly', 'analytics'] as const).map((type) => (
                 <button
                   key={type}
                   onClick={() => setReportType(type)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                     reportType === type
-                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                      : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
+                      ? 'bg-primary/10 text-primary border border-primary/30'
+                      : 'bg-surface text-text-secondary border border-border hover:text-text-primary'
                   }`}
                 >
                   {type.charAt(0).toUpperCase() + type.slice(1)}

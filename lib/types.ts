@@ -154,3 +154,130 @@ export interface BackupRecord {
   created_by: string;
   created_at: string;
 }
+
+// Theme Types
+export type ThemeName = 'dark' | 'light' | 'midnight' | 'ocean' | 'forest' | 'sunset';
+export type UIStyle = 'legacy' | 'silk';
+
+export interface ThemeConfig {
+  name: string;
+  label: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+  background: string;
+  surface: string;
+  text: string;
+  textSecondary: string;
+  border: string;
+  glassBg: string;
+  glassBorder: string;
+  success: string;
+  warning: string;
+  error: string;
+}
+
+export const THEMES: Record<ThemeName, ThemeConfig> = {
+  dark: {
+    name: 'dark',
+    label: 'Dark',
+    primary: '#f59e0b',
+    secondary: '#3b82f6',
+    accent: '#f59e0b',
+    background: '#020617',
+    surface: '#0f172a',
+    text: '#ffffff',
+    textSecondary: '#94a3b8',
+    border: '#1e293b',
+    glassBg: 'rgba(15, 23, 42, 0.8)',
+    glassBorder: 'rgba(255, 255, 255, 0.1)',
+    success: '#22c55e',
+    warning: '#eab308',
+    error: '#ef4444',
+  },
+  light: {
+    name: 'light',
+    label: 'Light',
+    primary: '#f59e0b',
+    secondary: '#3b82f6',
+    accent: '#f59e0b',
+    background: '#ffffff',
+    surface: '#f8fafc',
+    text: '#0f172a',
+    textSecondary: '#64748b',
+    border: '#e2e8f0',
+    glassBg: 'rgba(255, 255, 255, 0.85)',
+    glassBorder: 'rgba(0, 0, 0, 0.1)',
+    success: '#22c55e',
+    warning: '#eab308',
+    error: '#ef4444',
+  },
+  midnight: {
+    name: 'midnight',
+    label: 'Midnight',
+    primary: '#6366f1',
+    secondary: '#8b5cf6',
+    accent: '#6366f1',
+    background: '#0a0f1a',
+    surface: '#111827',
+    text: '#f1f5f9',
+    textSecondary: '#94a3b8',
+    border: '#1e293b',
+    glassBg: 'rgba(17, 24, 39, 0.8)',
+    glassBorder: 'rgba(99, 102, 241, 0.2)',
+    success: '#22c55e',
+    warning: '#eab308',
+    error: '#ef4444',
+  },
+  ocean: {
+    name: 'ocean',
+    label: 'Ocean',
+    primary: '#06b6d4',
+    secondary: '#0ea5e9',
+    accent: '#06b6d4',
+    background: '#042f2e',
+    surface: '#134e4a',
+    text: '#f0fdfa',
+    textSecondary: '#5eead4',
+    border: '#115e59',
+    glassBg: 'rgba(20, 78, 74, 0.8)',
+    glassBorder: 'rgba(6, 182, 212, 0.2)',
+    success: '#22c55e',
+    warning: '#eab308',
+    error: '#ef4444',
+  },
+  forest: {
+    name: 'forest',
+    label: 'Forest',
+    primary: '#22c55e',
+    secondary: '#16a34a',
+    accent: '#22c55e',
+    background: '#052e16',
+    surface: '#14532d',
+    text: '#f0fdf4',
+    textSecondary: '#86efac',
+    border: '#166534',
+    glassBg: 'rgba(20, 83, 45, 0.8)',
+    glassBorder: 'rgba(34, 197, 94, 0.2)',
+    success: '#22c55e',
+    warning: '#eab308',
+    error: '#ef4444',
+  },
+  sunset: {
+    name: 'sunset',
+    label: 'Sunset',
+    primary: '#f97316',
+    secondary: '#ea580c',
+    accent: '#f97316',
+    background: '#1c0a00',
+    surface: '#2d1810',
+    text: '#fff7ed',
+    textSecondary: '#fed7aa',
+    border: '#431407',
+    glassBg: 'rgba(45, 24, 16, 0.8)',
+    glassBorder: 'rgba(249, 115, 22, 0.2)',
+    success: '#22c55e',
+    warning: '#eab308',
+    error: '#ef4444',
+  },
+};
