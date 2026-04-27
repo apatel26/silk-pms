@@ -9,18 +9,20 @@ on:
         default: 'true'
         type: boolean
 
-permissions:
-  contents: write
-
 jobs:
   promote:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+      deployments: write
+      id-token: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: 'main'
+          ref: 'preview'
           fetch-depth: 0
           persist-credentials: false
 
@@ -89,15 +91,13 @@ jobs:
         run: |
           git config --global user.name "PMS Auto-Promote"
           git config --global user.email "automated@silk-pms"
-          # Override the default credential helper to prevent auth reuse
-          git config --global credential.helper store
-          # Write credentials to prevent Git from trying other auth methods
-          printf "https://x-access-token:%s\n" "$GH_TOKEN" > ~/.git-credentials-temp
-          # Unset the actions-provided auth header at LOCAL level (only place it exists)
-          git config --local http.https://github.com/.extraheader "AUTHORIZATION: Bearer $GH_TOKEN"
+          git config --global credential.helper ""
           git checkout main
           git fetch origin preview
           git merge origin/preview --no-edit
+          # Use gh auth to login and then git push with auth
+          echo $GH_TOKEN | gh auth login --with-token
+          gh api method GET repos/apatel26/silk-pms 2>/dev/null || true
           git push https://x-access-token:$GH_TOKEN@github.com/apatel26/silk-pms.git main
 
           echo "Code merged and pushed to main"
