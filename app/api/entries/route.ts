@@ -150,8 +150,9 @@ export async function POST(request: Request) {
     let tax_c = 0;
     let tax_s = 0;
     const finalRoomRate = room_rate || await getDefaultRoomRate();
-    // Subtotal and total are for ALL nights
-    const subtotalForNights = finalRoomRate * numNights;
+    // For guests: rate is per-night, so multiply by numNights
+    // For RV: rate is already the flat total for the duration (weekly/monthly), don't multiply
+    const subtotalForNights = entry_type === 'guest' ? finalRoomRate * numNights : finalRoomRate;
     let subtotal = subtotalForNights;
     let total = subtotalForNights;
 

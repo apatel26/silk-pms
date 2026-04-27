@@ -354,12 +354,14 @@ export default function EntriesPage() {
 
     try {
       let success = false;
+      // Use correct room/site number based on entry type
+      const mainRoomNum = formData.entry_type === 'rv' ? formData.site_number : formData.room_number;
 
       if (editingEntry) {
         const res = await fetch(`/api/entries/${editingEntry.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(createPayload(formData.room_number, true)),
+          body: JSON.stringify(createPayload(mainRoomNum, true)),
         });
         success = res.ok;
       } else {
@@ -367,7 +369,7 @@ export default function EntriesPage() {
         const mainRes = await fetch('/api/entries', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(createPayload(formData.room_number, true)),
+          body: JSON.stringify(createPayload(mainRoomNum, true)),
         });
         success = mainRes.ok;
 
