@@ -52,6 +52,7 @@ jobs:
       # Step 2: Swap the environment variables in Vercel
       - name: Swap database URLs in Vercel
         run: |
+          set +e
           echo "Swapping database URLs..."
 
           PREVIEW_DB="${{ env.PREVIEW_URL }}"
@@ -61,25 +62,23 @@ jobs:
           echo "Production DB (current): $PROD_DB"
 
           # Update NEXT_PUBLIC_SUPABASE_URL to preview database
-          echo "Updating NEXT_PUBLIC_SUPABASE_URL to preview database..."
-          curl -X PATCH "https://api.vercel.com/v10/projects/${{ secrets.VERCEL_PROJECT_ID }}/env/NEXT_PUBLIC_SUPABASE_URL" \
+          echo "Updating NEXT_PUBLIC_SUPABASE_URL..."
+          curl -s -X PATCH "https://api.vercel.com/v10/projects/${{ secrets.VERCEL_PROJECT_ID }}/env/NEXT_PUBLIC_SUPABASE_URL" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{
               "value": "'"$PREVIEW_DB"'",
-              "type": "encrypted",
-              "environments": ["production", "preview", "development"]
+              "type": "encrypted"
             }'
 
           # Update PREVIEW_SUPABASE_URL to production database
-          echo "Updating PREVIEW_SUPABASE_URL to production database..."
-          curl -X PATCH "https://api.vercel.com/v10/projects/${{ secrets.VERCEL_PROJECT_ID }}/env/PREVIEW_SUPABASE_URL" \
+          echo "Updating PREVIEW_SUPABASE_URL..."
+          curl -s -X PATCH "https://api.vercel.com/v10/projects/${{ secrets.VERCEL_PROJECT_ID }}/env/PREVIEW_SUPABASE_URL" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{
               "value": "'"$PROD_DB"'",
-              "type": "encrypted",
-              "environments": ["production", "preview", "development"]
+              "type": "encrypted"
             }'
 
           echo "Environment variables swapped!"
