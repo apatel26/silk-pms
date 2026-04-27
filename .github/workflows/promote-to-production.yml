@@ -90,12 +90,9 @@ jobs:
         run: |
           git config --global user.name "PMS Auto-Promote"
           git config --global user.email "automated@silk-pms"
-          git config --global credential.helper ""
           git checkout main
           git fetch origin preview
           git merge origin/preview --no-edit
-          echo $GH_TOKEN | gh auth login --with-token
-          gh api method GET repos/apatel26/silk-pms 2>/dev/null || true
           git push https://x-access-token:$GH_TOKEN@github.com/apatel26/silk-pms.git main
 
           echo "Code merged and pushed to main"
