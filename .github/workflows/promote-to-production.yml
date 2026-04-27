@@ -82,10 +82,10 @@ jobs:
             DEPLOYMENT=$(curl -s "https://api.vercel.com/v13/deployments?projectId=${{ secrets.VERCEL_PROJECT_ID }}&target=production" \
               -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}")
             STATE=$(echo $DEPLOYMENT | jq -r '.deployments[0].state' 2>/dev/null)
-            UID=$(echo $DEPLOYMENT | jq -r '.deployments[0].uid' 2>/dev/null)
+            DEPLOY_UID=$(echo $DEPLOYMENT | jq -r '.deployments[0].uid' 2>/dev/null)
             echo "Check $i/30 - State: $STATE"
             if [ "$STATE" = "READY" ]; then
-              echo "Deployment READY: https://vercel.com/apatel26s-projects/silk-pms/$UID"
+              echo "Deployment READY: https://vercel.com/apatel26s-projects/silk-pms/$DEPLOY_UID"
               break
             fi
             sleep 10
