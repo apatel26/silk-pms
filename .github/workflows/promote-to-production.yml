@@ -26,64 +26,43 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # Step 1: Get current environment variable values from Vercel
-      - name: Get current Vercel environment variables
-        id: get-envs
+      - name: Get Vercel env vars
         run: |
-          echo "Fetching current environment variables from Vercel..."
-
-          # Get PREVIEW_SUPABASE_URL
+          echo "Fetching environment variables from Vercel..."
           PREVIEW_URL=$(curl -s "https://api.vercel.com/v10/projects/${{ secrets.VERCEL_PROJECT_ID }}/env" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}" \
             | jq -r '.envs[] | select(.key == "PREVIEW_SUPABASE_URL") | .value' 2>/dev/null || echo "")
-
-          # Get NEXT_PUBLIC_SUPABASE_URL
           PROD_URL=$(curl -s "https://api.vercel.com/v10/projects/${{ secrets.VERCEL_PROJECT_ID }}/env" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}" \
             | jq -r '.envs[] | select(.key == "NEXT_PUBLIC_SUPABASE_URL") | .value' 2>/dev/null || echo "")
-
           echo "PREVIEW_URL=$PREVIEW_URL"
           echo "PROD_URL=$PROD_URL"
-
-          # Write to file for next step
           echo "PREVIEW_URL=$PREVIEW_URL" >> $GITHUB_ENV
           echo "PROD_URL=$PROD_URL" >> $GITHUB_ENV
 
-      # Step 2: Swap the environment variables in Vercel
-      - name: Swap database URLs in Vercel
+      - name: Swap Vercel env vars
         run: |
           set +e
           echo "Swapping database URLs..."
-
           PREVIEW_DB="${{ env.PREVIEW_URL }}"
           PROD_DB="${{ env.PROD_URL }}"
+          echo "Preview DB: $PREVIEW_DB"
+          echo "Production DB: $PROD_DB"
 
-          echo "Preview DB (current): $PREVIEW_DB"
-          echo "Production DB (current): $PROD_DB"
-
-          # Update NEXT_PUBLIC_SUPABASE_URL to preview database
           echo "Updating NEXT_PUBLIC_SUPABASE_URL..."
           curl -s -X PATCH "https://api.vercel.com/v10/projects/${{ secrets.VERCEL_PROJECT_ID }}/env/NEXT_PUBLIC_SUPABASE_URL" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "value": "'"$PREVIEW_DB"'",
-              "type": "encrypted"
-            }'
+            -d '{"value": "'"$PREVIEW_DB"'", "type": "encrypted"}'
 
-          # Update PREVIEW_SUPABASE_URL to production database
           echo "Updating PREVIEW_SUPABASE_URL..."
           curl -s -X PATCH "https://api.vercel.com/v10/projects/${{ secrets.VERCEL_PROJECT_ID }}/env/PREVIEW_SUPABASE_URL" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "value": "'"$PROD_DB"'",
-              "type": "encrypted"
-            }'
+            -d '{"value": "'"$PROD_DB"'", "type": "encrypted"}'
 
           echo "Environment variables swapped!"
 
-      # Step 3: Merge preview to main and push
       - name: Merge and push to main
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
@@ -94,49 +73,26 @@ jobs:
           git fetch origin preview
           git merge origin/preview --no-edit
           git push https://x-access-token:$GH_TOKEN@github.com/apatel26/silk-pms.git main
-
           echo "Code merged and pushed to main"
 
-      # Step 4: Wait for production deployment
-      - name: Wait for production deployment
+      - name: Wait for deployment
         run: |
-          echo "Waiting for Vercel production deployment to complete..."
-          DEPLOYMENT_ID=""
-          READY=false
-
+          echo "Waiting for Vercel production deployment..."
           for i in {1..30}; do
             DEPLOYMENT=$(curl -s "https://api.vercel.com/v13/deployments?projectId=${{ secrets.VERCEL_PROJECT_ID }}&target=production" \
               -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}")
-
             STATE=$(echo $DEPLOYMENT | jq -r '.deployments[0].state' 2>/dev/null)
             UID=$(echo $DEPLOYMENT | jq -r '.deployments[0].uid' 2>/dev/null)
-
             echo "Check $i/30 - State: $STATE"
-
             if [ "$STATE" = "READY" ]; then
-              echo "Deployment READY!"
-              DEPLOYMENT_ID="$UID"
-              READY=true
+              echo "Deployment READY: https://vercel.com/apatel26s-projects/silk-pms/$UID"
               break
             fi
-
             sleep 10
           done
 
-          if [ "$READY" = true ] && [ -n "$DEPLOYMENT_ID" ]; then
-            echo "=============================================="
-            echo "Production deployed: https://vercel.com/apatel26s-projects/silk-pms/$DEPLOYMENT_ID"
-            echo "=============================================="
-          else
-            echo "Deployment check timed out - please verify manually"
-          fi
-
-      - name: Log promotion success
+      - name: Complete
         run: |
           echo "==============================================="
           echo "PROMOTION COMPLETED SUCCESSFULLY!"
-          echo "==============================================="
-          echo "- Preview database is now PRODUCTION"
-          echo "- Production database is now PREVIEW (backup)"
-          echo "- Code has been merged and deployed"
           echo "==============================================="
