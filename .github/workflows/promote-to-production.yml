@@ -9,18 +9,19 @@ on:
         default: 'true'
         type: boolean
 
+permissions:
+  contents: write
+
 jobs:
   promote:
     runs-on: ubuntu-latest
     environment: production
-    permissions:
-      contents: write
-      pull-requests: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: 'main'
           fetch-depth: 0
 
       # Step 1: Get current environment variable values from Vercel
@@ -82,22 +83,15 @@ jobs:
           echo "Environment variables swapped!"
 
       # Step 3: Merge preview to main and push
-      - name: Configure git credentials
-        run: |
-          git config user.name "PMS Auto-Promote"
-          git config user.email "automated@silk-pms"
-          # Use HTTPS with PAT for authentication
-          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/apatel26/silk-pms.git
-          # Also update the auth header to use our PAT
-          git config http.https://github.com/.extraheader "AUTHORIZATION: basic x-access-token:${{ secrets.GH_PAT }}"
-
       - name: Merge and push to main
         env:
-          GIT_TERMINAL_PROMPT: 0
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
+          git config --global user.name "PMS Auto-Promote"
+          git config --global user.email "automated@silk-pms"
           git checkout main
           git merge origin/preview --no-edit
-          git push origin main
+          git push https://x-access-token:$GH_TOKEN@github.com/apatel26/silk-pms.git main
 
           echo "Code merged and pushed to main"
 
