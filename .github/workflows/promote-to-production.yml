@@ -15,7 +15,6 @@ permissions:
 jobs:
   promote:
     runs-on: ubuntu-latest
-    environment: production
 
     steps:
       - name: Checkout code
@@ -23,6 +22,7 @@ jobs:
         with:
           ref: 'main'
           fetch-depth: 0
+          persist-credentials: false
 
       # Step 1: Get current environment variable values from Vercel
       - name: Get current Vercel environment variables
@@ -89,9 +89,14 @@ jobs:
         run: |
           git config --global user.name "PMS Auto-Promote"
           git config --global user.email "automated@silk-pms"
+          # Remove the default auth header that actions/checkout sets
+          git config --global --unset-all http.https://github.com/.extraheader
+          # Set our own auth header with our PAT
+          git config --global http.https://github.com/.extraheader "Authorization: Bearer $GH_TOKEN"
           git checkout main
+          git fetch origin preview
           git merge origin/preview --no-edit
-          git push https://x-access-token:$GH_TOKEN@github.com/apatel26/silk-pms.git main
+          git push https://github.com/apatel26/silk-pms.git main
 
           echo "Code merged and pushed to main"
 
