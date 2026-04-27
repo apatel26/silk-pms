@@ -13,6 +13,9 @@ jobs:
   promote:
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -56,25 +59,23 @@ jobs:
 
           # Update NEXT_PUBLIC_SUPABASE_URL to preview database
           echo "Updating NEXT_PUBLIC_SUPABASE_URL to preview database..."
-          curl -X POST "https://api.vercel.com/v10/projects/${{ secrets.VERCEL_PROJECT_ID }}/env" \
+          curl -X PATCH "https://api.vercel.com/v10/projects/${{ secrets.VERCEL_PROJECT_ID }}/env/NEXT_PUBLIC_SUPABASE_URL" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{
-              "key": "NEXT_PUBLIC_SUPABASE_URL",
               "value": "'"$PREVIEW_DB"'",
-              "type": "secret",
+              "type": "encrypted",
               "environments": ["production", "preview", "development"]
             }'
 
           # Update PREVIEW_SUPABASE_URL to production database
           echo "Updating PREVIEW_SUPABASE_URL to production database..."
-          curl -X POST "https://api.vercel.com/v10/projects/${{ secrets.VERCEL_PROJECT_ID }}/env" \
+          curl -X PATCH "https://api.vercel.com/v10/projects/${{ secrets.VERCEL_PROJECT_ID }}/env/PREVIEW_SUPABASE_URL" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{
-              "key": "PREVIEW_SUPABASE_URL",
               "value": "'"$PROD_DB"'",
-              "type": "secret",
+              "type": "encrypted",
               "environments": ["production", "preview", "development"]
             }'
 
